@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gamma Creative Analytics</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f6f5f8;--panel:#fff;--panel2:#faf9fc;--text:#17141f;--muted:#6b6577;--line:#e7e3ee;
+  --accent:#7b3fe4;--accent-soft:#efe7fd;--good:#13865a;--good-soft:#e2f5ec;--bad:#c23b3b;--bad-soft:#fbe6e6;
+  --warn:#a86a00;--warn-soft:#fdf1dc;--shadow:0 1px 2px rgba(20,10,40,.05),0 4px 16px rgba(20,10,40,.05);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121017;--panel:#1b1822;--panel2:#211d2a;--text:#ece9f3;--muted:#9a93a8;--line:#2e2938;
+  --accent:#a77bff;--accent-soft:#2c2142;--good:#3ccf8e;--good-soft:#173326;--bad:#ff7a7a;--bad-soft:#3a1d1f;
+  --warn:#f0b44c;--warn-soft:#3a2c13;--shadow:none}}
+:root[data-theme="dark"]{
+  --bg:#121017;--panel:#1b1822;--panel2:#211d2a;--text:#ece9f3;--muted:#9a93a8;--line:#2e2938;
+  --accent:#a77bff;--accent-soft:#2c2142;--good:#3ccf8e;--good-soft:#173326;--bad:#ff7a7a;--bad-soft:#3a1d1f;
+  --warn:#f0b44c;--warn-soft:#3a2c13;--shadow:none}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1500px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#7b3fe4,#e0459b);display:grid;place-items:center;color:#fff;font-weight:700}
+h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:12.5px}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.filters{display:flex;flex-wrap:wrap;gap:14px 20px;padding:14px 16px;margin-bottom:14px;align-items:flex-end}
+.f label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--panel2);padding:6px 12px;border-radius:999px;cursor:pointer;font-weight:500;font-size:13px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+select,input[type=date],input[type=search],input[type=password]{border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:7px 10px;min-height:34px}
+select{max-width:240px}
+.check{display:flex;align-items:center;gap:6px;font-size:13px;min-height:34px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.kpi{padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:500}
+.kpi .v{font-size:24px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.kpi .c{font-size:12px;color:var(--muted);margin-top:2px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 12px;overflow-x:auto}
+.tab{padding:12px 14px;border:0;background:none;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.toolbar{display:flex;gap:10px;align-items:center;padding:12px 14px;flex-wrap:wrap}
+.tablewrap{overflow:auto;max-height:72vh}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+th{position:sticky;top:0;background:var(--panel2);text-align:right;font-weight:600;color:var(--muted);font-size:11.5px;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;z-index:1}
+th.l,td.l{text-align:left}
+th .arr{opacity:.5}
+td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr:hover td{background:var(--panel2)}
+td.name{max-width:330px;overflow:hidden;text-overflow:ellipsis}
+.thumb{width:38px;height:52px;border-radius:6px;object-fit:cover;background:var(--line);display:block}
+.cr{display:flex;gap:10px;align-items:center}
+.cr .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.cr .s{font-size:11.5px;color:var(--muted)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600}
+.pill.g{background:var(--good-soft);color:var(--good)}.pill.b{background:var(--bad-soft);color:var(--bad)}.pill.w{background:var(--warn-soft);color:var(--warn)}.pill.n{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.ed{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
+.roas-good{color:var(--good);font-weight:600}.roas-bad{color:var(--bad);font-weight:600}
+.spark{display:inline-flex;gap:2px;align-items:flex-end;height:22px;vertical-align:middle}
+.spark i{width:7px;background:var(--accent);border-radius:2px;opacity:.85}
+.muted{color:var(--muted)}
+.more{padding:14px;text-align:center}
+.lock{min-height:100vh;display:grid;place-items:center;padding:16px}
+.lock .card{padding:28px;width:100%;max-width:380px}
+.lock h2{margin:12px 0 4px;font-size:20px}
+.lock input[type=password]{width:100%;margin:16px 0 10px}
+.err{color:var(--bad);font-size:13px;min-height:18px}
+.note{font-size:12px;color:var(--muted);padding:0 16px 14px}
+#preview{position:fixed;pointer-events:none;z-index:50;display:none;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:240px;max-height:420px}
+@media (max-width:640px){.kpi .v{font-size:20px}h1{font-size:17px}}
+</style>
+</head>
+<body>
+<div id="lock" class="lock">
+  <form class="card" id="lockform">
+    <div class="logo">G</div>
+    <h2>Creative Analytics</h2>
+    <div class="sub">Enter the team password to open the dashboard.</div>
+    <input type="password" id="pw" placeholder="Password" autocomplete="current-password" autofocus>
+    <label class="check"><input type="checkbox" id="remember" checked> Remember on this device</label>
+    <div class="err" id="err"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px">Open</button>
+  </form>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <header>
+    <div class="logo">G</div>
+    <div><h1>Gamma Creative Analytics</h1><div class="sub" id="updated"></div></div>
+    <div class="spacer"></div>
+    <button class="btn" id="theme" title="Toggle theme">◐</button>
+    <button class="btn primary" id="export">⬇ Export to Excel</button>
+  </header>
+
+  <section class="card filters">
+    <div class="f"><label>Editor</label><div class="chips" id="editors"></div></div>
+    <div class="f"><label>Series</label><select id="series"></select></div>
+    <div class="f"><label>Period</label><div class="chips" id="presets"></div></div>
+    <div class="f"><label>From</label><input type="date" id="from"></div>
+    <div class="f"><label>To</label><input type="date" id="to"></div>
+    <div class="f"><label>Account</label><select id="account"></select></div>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card">
+    <div class="tabs" id="tabs"></div>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search creative name…" style="flex:1;min-width:180px;max-width:360px">
+      <label class="check"><input type="checkbox" id="tested" checked> Tested only (spend ≥ $15)</label>
+      <span class="spacer"></span><span class="muted" id="count"></span>
+    </div>
+    <div class="tablewrap"><table id="tbl"></table></div>
+    <div class="more" id="morewrap" hidden><button class="btn" id="more">Show more</button></div>
+    <div class="note" id="note"></div>
+  </section>
+</div>
+<img id="preview" alt="">
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const PW_KEY = "gca_pw";
+let D, AD, ROWS, state = {editor:"All", series:"All", account:"All", from:null, to:null, tab:"creatives", q:"", tested:true, sort:{key:"spend",dir:-1}, limit:150};
+
+// ---------- theme ----------
+try { const t = localStorage.getItem("gca_theme"); if (t) document.documentElement.dataset.theme = t; } catch(e){}
+$("#theme").onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const nxt = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = nxt; try { localStorage.setItem("gca_theme", nxt); } catch(e){}
+};
+
+// ---------- decrypt ----------
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+let ENC;
+async function unlock(pw){
+  if (!ENC) ENC = await (await fetch("data.enc?" + Date.now())).json();
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt:b64(ENC.salt), iterations:ENC.iter, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(ENC.iv)}, key, b64(ENC.ct));
+  const stream = new Blob([plain]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return JSON.parse(await new Response(stream).text());
+}
+$("#lockform").onsubmit = async e => {
+  e.preventDefault(); $("#err").textContent = "Opening…";
+  try {
+    const pw = $("#pw").value; D = await unlock(pw);
+    try { if ($("#remember").checked) localStorage.setItem(PW_KEY, pw); } catch(e){}
+    start();
+  } catch(err){ $("#err").textContent = "Wrong password."; }
+};
+(async () => { let pw = null; try { pw = localStorage.getItem(PW_KEY); } catch(e){}
+  if (location.hash.startsWith("#pw=")) { pw = decodeURIComponent(location.hash.slice(4)); history.replaceState(null, "", location.pathname); }
+  if (pw) { try { D = await unlock(pw); start(); } catch(e){ console.error('unlock failed', e && (e.stack||e.message||e)); try{localStorage.removeItem(PW_KEY);}catch(_){} } } })();
+
+// ---------- helpers ----------
+const fmt$ = v => v == null || !isFinite(v) ? "–" : "$" + (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(v < 10 ? 2 : 0));
+const fmtN = v => v == null || !isFinite(v) ? "–" : Math.round(v).toLocaleString("en-US");
+const fmtR = v => v == null || !isFinite(v) ? "–" : v.toFixed(2);
+const fmtP = v => v == null || !isFinite(v) ? "–" : v.toFixed(v < 10 ? 2 : 1) + "%";
+const fmtS = v => v == null || !isFinite(v) ? "–" : v.toFixed(1) + "s";
+const div = (a, b) => b ? a / b : null;
+const dayDate = i => { const d = new Date(D.since + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + i); return d; };
+const iso = d => d.toISOString().slice(0, 10);
+const dayIdx = s => Math.round((new Date(s + "T00:00:00Z") - new Date(D.since + "T00:00:00Z")) / 864e5);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function start(){
+  $("#lock").hidden = true; $("#app").hidden = false;
+  const ac = D.ad_cols; AD = D.ads.map(a => Object.fromEntries(ac.map((k, i) => [k, a[i]])));
+  ROWS = D.rows;
+  $("#updated").textContent = `Meta · ${D.since} → ${D.until} · updated ${D.generated}`;
+  state.to = D.until; const f = new Date(D.until + "T00:00:00Z"); f.setUTCDate(f.getUTCDate() - 13); state.from = iso(f) < D.since ? D.since : iso(f);
+  $("#from").min = $("#to").min = D.since; $("#from").max = $("#to").max = D.until;
+  buildFilters(); render();
+}
+
+function buildFilters(){
+  const eds = ["All", ...D.editors];
+  $("#editors").innerHTML = eds.map(e => `<button class="chip" data-e="${esc(e)}">${esc(e)}</button>`).join("");
+  $("#editors").onclick = e => { const b = e.target.closest("[data-e]"); if (!b) return; state.editor = b.dataset.e; state.limit = 150; render(); };
+  const ser = [...new Set(AD.map(a => a.series))].sort((a, b) => a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b));
+  $("#series").innerHTML = ["All", ...ser].map(s => `<option>${esc(s)}</option>`).join("");
+  $("#series").onchange = e => { state.series = e.target.value; state.limit = 150; render(); };
+  const acc = [...new Set(AD.map(a => a.account))];
+  $("#account").innerHTML = ["All", ...acc].map(s => `<option>${esc(s)}</option>`).join("");
+  $("#account").onchange = e => { state.account = e.target.value; render(); };
+  const presets = [["7d",7],["14d",14],["30d",30],["90d",90]];
+  $("#presets").innerHTML = presets.map(([l, n]) => `<button class="chip" data-n="${n}">Last ${l}</button>`).join("");
+  $("#presets").onclick = e => { const b = e.target.closest("[data-n]"); if (!b) return;
+    const t = new Date(D.until + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - (+b.dataset.n - 1));
+    state.to = D.until; state.from = iso(t) < D.since ? D.since : iso(t); render(); };
+  $("#from").onchange = e => { state.from = e.target.value || D.since; render(); };
+  $("#to").onchange = e => { state.to = e.target.value || D.until; render(); };
+  $("#q").oninput = e => { state.q = e.target.value.toLowerCase(); state.limit = 150; renderTable(); };
+  $("#tested").onchange = e => { state.tested = e.target.checked; renderTable(); };
+  const tabs = [["creatives","Creatives"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["campaigns","Campaigns"]];
+  $("#tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab" data-t="${k}">${l}</button>`).join("");
+  $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = {key:"spend", dir:-1}; state.limit = 150; render(); };
+  $("#more").onclick = () => { state.limit += 300; renderTable(); };
+  $("#export").onclick = exportXlsx;
+}
+
+// ---------- aggregation ----------
+function blank(){ return {spend:0, impr:0, clicks:0, purch:0, value:0, p25:0, p50:0, p75:0, p100:0, thru:0, watch:0, plays:0, ads:new Set(), weeks:[0,0,0,0].map(() => ({spend:0, value:0, purch:0}))}; }
+function add(t, r, wk){
+  t.spend += r[2]; t.impr += r[3]; t.clicks += r[4]; t.purch += r[5]; t.value += r[6];
+  t.p25 += r[7]; t.p50 += r[8]; t.p75 += r[9]; t.p100 += r[10]; t.thru += r[11]; t.watch += r[12]; t.plays += r[13]; t.ads.add(r[1]);
+  if (wk >= 0 && wk < 4) { t.weeks[wk].spend += r[2]; t.weeks[wk].value += r[6]; t.weeks[wk].purch += r[5]; }
+}
+function finish(t){
+  t.roas = div(t.value, t.spend); t.cpa = div(t.spend, t.purch); t.cpm = div(t.spend * 1000, t.impr);
+  t.ctr = div(t.clicks * 100, t.impr); t.w25 = div(t.p25 * 100, t.impr); t.keep = div(t.p50 * 100, t.p25);
+  t.w75 = div(t.p75 * 100, t.impr); t.w100 = div(t.p100 * 100, t.impr); t.thrup = div(t.thru * 100, t.impr);
+  t.avg = div(t.watch, t.plays); t.cpc = div(t.spend, t.clicks); t.c2p = div(t.purch * 100, t.clicks);
+  t.wroas = t.weeks.map(w => w.spend ? w.value / w.spend : null).reverse(); // oldest → newest
+  const [a, b] = [t.wroas[2], t.wroas[3]];
+  t.trend = (a == null || b == null || t.weeks[0].spend < 5 || t.weeks[1].spend < 5) ? "" : b > a * 1.2 ? "Rising" : b < a * 0.8 ? "Dropping" : "Stable";
+  t.nAds = t.ads.size; return t;
+}
+function inScope(a, ignoreEditor){
+  return (ignoreEditor || state.editor === "All" || a.editor === state.editor) &&
+         (state.series === "All" || a.series === state.series) &&
+         (state.account === "All" || a.account === state.account);
+}
+function compute(){
+  const lo = dayIdx(state.from), hi = dayIdx(state.to);
+  const byCr = new Map(), whole = blank(), all = new Map();
+  for (const r of ROWS) {
+    if (r[0] < lo || r[0] > hi) continue;
+    const a = AD[r[1]]; const wk = Math.floor((hi - r[0]) / 7);
+    if (inScope(a, true)) {
+      add(whole, r, wk);
+      const k2 = a.editor + "|" + a.creative; if (!all.has(k2)) all.set(k2, blank()); add(all.get(k2), r, wk);
+    }
+    if (!inScope(a)) continue;
+    const k = a.editor + "|" + a.creative;
+    if (!byCr.has(k)) byCr.set(k, Object.assign(blank(), {meta:a, camps:new Set()}));
+    const t = byCr.get(k); add(t, r, wk); t.camps.add(a.campaign);
+  }
+  const crs = [...byCr.values()].map(finish);
+  // benchmarks for "where it breaks": all editors, same series/account/period, tested creatives
+  const bench = [...all.values()].map(finish).filter(t => t.spend >= 15);
+  const med = arr => { const s = arr.filter(v => v != null).sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
+  const mCtr = med(bench.map(t => t.ctr)), mC2p = med(bench.map(t => t.c2p));
+  for (const t of crs) {
+    if (t.spend < 15 || mCtr == null) { t.breaks = ""; continue; }
+    const hiC = (t.ctr ?? 0) >= mCtr, hiB = (t.c2p ?? 0) >= mC2p;
+    t.breaks = hiC && hiB ? "Strong: people click and buy" : !hiC && hiB ? "Few click, but those who click buy" : hiC ? "Gets clicks, but the clicks do not buy" : "Weak on both";
+  }
+  return {crs, whole:finish(whole), lo, hi};
+}
+
+// ---------- rendering ----------
+let C;
+function render(){
+  document.querySelectorAll("#editors .chip").forEach(b => b.classList.toggle("on", b.dataset.e === state.editor));
+  document.querySelectorAll("#tabs .tab").forEach(b => b.classList.toggle("on", b.dataset.t === state.tab));
+  document.querySelectorAll("#presets .chip").forEach(b => { const t = new Date(D.until + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - (+b.dataset.n - 1));
+    const f = iso(t) < D.since ? D.since : iso(t); b.classList.toggle("on", state.to === D.until && state.from === f); });
+  $("#from").value = state.from; $("#to").value = state.to;
+  C = compute(); renderKpis(); renderTable();
+}
+function renderKpis(){
+  const t = finish(C.crs.reduce((acc, c) => { for (const k of ["spend","impr","clicks","purch","value","p25","p50","p75","p100","thru","watch","plays"]) acc[k] += c[k]; return acc; }, blank()));
+  const tested = C.crs.filter(c => c.spend >= 15).length, w = C.whole;
+  const cmp = state.editor === "All" ? "" : (v, f) => `All editors: ${f(v)}`;
+  const k = (l, v, c) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="c">${c || "&nbsp;"}</div></div>`;
+  $("#kpis").innerHTML =
+    k("Spend", fmt$(t.spend), cmp && `${fmtN(t.spend / (w.spend || 1) * 100)}% of all editors`) +
+    k("Purchases", fmtN(t.purch), cmp && cmp(w.purch, fmtN)) +
+    k("ROAS", fmtR(t.roas), cmp && cmp(w.roas, fmtR)) +
+    k("Cost per purchase", fmt$(t.cpa), cmp && cmp(w.cpa, fmt$)) +
+    k("Creatives", fmtN(C.crs.length), `${tested} tested (≥ $15)`) +
+    k("Link CTR", fmtP(t.ctr), cmp && cmp(w.ctr, fmtP));
+}
+
+const roasCls = v => v == null ? "" : v >= 0.6 ? "roas-good" : v < 0.35 ? "roas-bad" : "";
+const breaksPill = s => !s ? "" : `<span class="pill ${s.startsWith("Strong") ? "g" : s.startsWith("Weak") ? "b" : "w"}">${esc(s)}</span>`;
+const trendPill = s => !s ? "" : `<span class="pill ${s === "Rising" ? "g" : s === "Dropping" ? "b" : "n"}">${s}</span>`;
+const spark = arr => { const m = Math.max(...arr.map(v => v || 0), .01);
+  return `<span class="spark" title="ROAS by week, oldest → newest: ${arr.map(fmtR).join(" · ")}">${arr.map(v => `<i style="height:${v == null ? 1 : Math.max(2, v / m * 22)}px;${v == null ? "opacity:.2" : ""}"></i>`).join("")}</span>`; };
+
+// column defs: [key, label, value fn, render fn, align-left]
+const MET = [
+  ["spend","Spend ($)",t=>t.spend,fmt$],["purch","Purchases",t=>t.purch,fmtN],["roas","ROAS",t=>t.roas,v=>`<span class="${roasCls(v)}">${fmtR(v)}</span>`],
+  ["cpa","Cost / purchase",t=>t.cpa,fmt$],["impr","Impressions",t=>t.impr,fmtN],["cpm","CPM",t=>t.cpm,fmt$],["ctr","Link CTR",t=>t.ctr,fmtP],
+  ["w25","Watched 25%",t=>t.w25,fmtP],["keep","Kept 25→50%",t=>t.keep,fmtP],["w75","Watched 75%",t=>t.w75,fmtP],["w100","Watched 100%",t=>t.w100,fmtP],
+  ["thrup","ThruPlay",t=>t.thrup,fmtP],["avg","Avg watch",t=>t.avg,fmtS],["cpc","Cost / click",t=>t.cpc,fmt$],["c2p","Click → purchase",t=>t.c2p,fmtP],
+];
+function cols(){
+  if (state.tab === "creatives") return [
+    ["creative","Creative",t=>t.meta.creative,(v,t)=>`<div class="cr">${t.meta.thumb?`<img class="thumb" loading="lazy" src="${esc(t.meta.thumb)}" data-big="${esc(t.meta.thumb)}" alt="">`:`<div class="thumb"></div>`}<div><div class="t" title="${esc(v)}">${esc(v)}</div><div class="s">${esc(t.meta.series)} · ${t.nAds} ad${t.nAds>1?"s":""} · ${t.camps.size} campaign${t.camps.size>1?"s":""}</div></div></div>`,1],
+    ["editor","Editor",t=>t.meta.editor,v=>`<span class="ed">${esc(v)}</span>`,1],
+    ["format","Format",t=>t.meta.format,v=>esc(v)||'<span class="muted">–</span>',1],
+    ["music","Music",t=>t.meta.music,v=>esc(v)||'<span class="muted">–</span>',1],
+    ...MET,
+    ["breaks","Where it breaks",t=>t.breaks,breaksPill,1],
+    ["wk","ROAS by week",t=>t.wroas[3],(v,t)=>spark(t.wroas),1],
+    ["trend","Trend",t=>t.trend,trendPill,1],
+  ];
+  const label = {series:"Series", music:"Music", format:"Format", campaigns:"Campaign", weekly:"Week"}[state.tab];
+  return [["g",label,t=>t.g,v=>esc(v),1],["n","Creatives",t=>t.nCr,fmtN],["nt","Tested",t=>t.nT,fmtN],...MET.slice(0,7),...MET.slice(7)];
+}
+function groupRows(){
+  let crs = C.crs.filter(t => !state.q || t.meta.creative.toLowerCase().includes(state.q));
+  if (state.tab === "creatives") return state.tested ? crs.filter(t => t.spend >= 15) : crs;
+  if (state.tab === "weekly") return weekly();
+  const keyFn = {series:t=>[t.meta.series], music:t=>[t.meta.music||"(none in name)"], format:t=>[t.meta.format||"(none in name)"], campaigns:t=>[...t.camps]}[state.tab];
+  const g = new Map();
+  for (const t of crs) for (const k of keyFn(t)) {
+    if (!g.has(k)) g.set(k, Object.assign(blank(), {g:k, nCr:0, nT:0}));
+    const x = g.get(k); x.nCr++; if (t.spend >= 15) x.nT++;
+    for (const f of ["spend","impr","clicks","purch","value","p25","p50","p75","p100","thru","watch","plays"]) x[f] += state.tab === "campaigns" && t.camps.size > 1 ? 0 : t[f];
+  }
+  if (state.tab === "campaigns") { // campaign totals must come from rows, not from creatives
+    const lo = C.lo, hi = C.hi; for (const x of g.values()) for (const f of ["spend","impr","clicks","purch","value","p25","p50","p75","p100","thru","watch","plays"]) x[f] = 0;
+    const keys = new Set(crs.map(t => t.meta.editor + "|" + t.meta.creative));
+    for (const r of ROWS) { if (r[0] < lo || r[0] > hi) continue; const a = AD[r[1]]; if (!inScope(a) || !keys.has(a.editor + "|" + a.creative)) continue;
+      const x = g.get(a.campaign); if (x) add(x, r, -1); }
+  }
+  return [...g.values()].map(finish);
+}
+function weekly(){
+  const out = []; const lo = C.lo, hi = C.hi;
+  const keys = new Set(C.crs.filter(t => !state.q || t.meta.creative.toLowerCase().includes(state.q)).map(t => t.meta.editor + "|" + t.meta.creative));
+  for (let end = hi; end >= lo; end -= 7) {
+    const start = Math.max(lo, end - 6), x = Object.assign(blank(), {g:`${iso(dayDate(start)).slice(5)} → ${iso(dayDate(end)).slice(5)}`, _o:end});
+    const crSet = new Map();
+    for (const r of ROWS) { if (r[0] < start || r[0] > end) continue; const a = AD[r[1]]; if (!inScope(a) || !keys.has(a.editor + "|" + a.creative)) continue;
+      add(x, r, -1); const k = a.editor + "|" + a.creative; crSet.set(k, (crSet.get(k) || 0) + r[2]); }
+    x.nCr = crSet.size; x.nT = [...crSet.values()].filter(v => v >= 15).length; out.push(finish(x));
+  }
+  return out;
+}
+function renderTable(){
+  const cs = cols(); let rows = groupRows();
+  const sc = cs.find(c => c[0] === state.sort.key) || cs.find(c => c[0] === "spend");
+  if (state.tab === "weekly" && state.sort.key === "spend" && state.sort.dir === -1 && !state._wsorted) rows.sort((a, b) => b._o - a._o);
+  else rows.sort((a, b) => { const x = sc[2](a), y = sc[2](b);
+    if (x == null || x === "") return 1; if (y == null || y === "") return -1;
+    return (typeof x === "string" ? x.localeCompare(y) : x - y) * state.sort.dir; });
+  C.view = {cs, rows};
+  const shown = rows.slice(0, state.limit);
+  $("#tbl").innerHTML = `<thead><tr>${cs.map(c => `<th class="${c[4] ? "l" : ""}" data-k="${c[0]}">${c[1]} <span class="arr">${state.sort.key === c[0] ? (state.sort.dir < 0 ? "↓" : "↑") : ""}</span></th>`).join("")}</tr></thead>
+    <tbody>${shown.map(t => `<tr>${cs.map(c => `<td class="${c[4] ? "l" : ""}${c[0] === "creative" ? " name" : ""}">${c[3](c[2](t), t)}</td>`).join("")}</tr>`).join("") ||
+    `<tr><td class="l muted" colspan="${cs.length}" style="padding:30px">Nothing matches these filters.</td></tr>`}</tbody>`;
+  $("#tbl thead").onclick = e => { const th = e.target.closest("th"); if (!th) return; const k = th.dataset.k;
+    state._wsorted = true; state.sort = {key:k, dir: state.sort.key === k ? -state.sort.dir : (["creative","editor","format","music","g","breaks","trend"].includes(k) ? 1 : -1)}; renderTable(); };
+  $("#count").textContent = `${rows.length.toLocaleString("en-US")} rows`;
+  $("#morewrap").hidden = rows.length <= state.limit;
+  $("#note").textContent = state.tab === "creatives"
+    ? "A creative = all ads with the same file name (copies merged). ROAS = purchase value ÷ spend, 7-day click / 1-day view. “Where it breaks” compares link CTR and click→purchase against the median of all tested creatives in the same filters. Trend compares the last two weeks of the period."
+    : "Totals for the creatives that match the current filters.";
+}
+
+// thumbnail preview on hover
+document.addEventListener("mouseover", e => { const im = e.target.closest("img.thumb"); const p = $("#preview");
+  if (!im) { p.style.display = "none"; return; } p.src = im.dataset.big; p.style.display = "block"; });
+document.addEventListener("mousemove", e => { const p = $("#preview"); if (p.style.display !== "block") return;
+  const x = Math.min(e.clientX + 18, innerWidth - 250), y = Math.min(e.clientY - 40, innerHeight - 430); p.style.left = x + "px"; p.style.top = Math.max(8, y) + "px"; });
+
+// ---------- export ----------
+function sheetFrom(tab){
+  const keep = {tab:state.tab, limit:state.limit}; state.tab = tab; const cs = cols(); const rows = groupRows();
+  rows.sort((a, b) => tab === "weekly" ? b._o - a._o : (b.spend - a.spend)); state.tab = keep.tab;
+  const plain = (c, t) => { const v = c[2](t); if (c[0] === "wk") return t.wroas.map(fmtR).join(" · "); return typeof v === "number" ? Math.round(v * 100) / 100 : v ?? ""; };
+  const head = cs.map(c => c[1]); if (tab === "creatives") head.splice(1, 0, "Series", "Ads", "Campaigns", "Ratio");
+  const body = rows.map(t => { const r = cs.map(c => plain(c, t)); if (tab === "creatives") r.splice(1, 0, t.meta.series, t.nAds, [...t.camps].join(" | "), t.meta.ratio); return r; });
+  return XLSX.utils.aoa_to_sheet([head, ...body]);
+}
+function exportXlsx(){
+  if (!window.XLSX) return;
+  const wb = XLSX.utils.book_new();
+  const crs = state.tested; // respect tested toggle for the creatives sheet
+  const info = [["Gamma Creative Analytics"],["Editor", state.editor],["Series", state.series],["Account", state.account],["From", state.from],["To", state.to],["Search", state.q || "–"],["Tested only", crs ? "yes (spend ≥ $15)" : "no"],["Data updated", D.generated]];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), "Filters");
+  for (const [k, n] of [["creatives","Creatives"],["series","By Series"],["weekly","Weekly"],["music","Music"],["format","Format"],["campaigns","Campaigns"]]) XLSX.utils.book_append_sheet(wb, sheetFrom(k), n);
+  const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor} - ${state.from} to ${state.to}.xlsx`;
+  XLSX.writeFile(wb, name);
+}
+</script>
+</body>
+</html>

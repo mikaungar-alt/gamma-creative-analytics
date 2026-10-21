@@ -1,0 +1,212 @@
+{
+ "accounts": [
+  {
+   "id": "act_3021183524733262",
+   "name": "Gamma IL"
+  },
+  {
+   "id": "act_1273515517747821",
+   "name": "GammaTime W2A"
+  },
+  {
+   "id": "act_1599069751834641",
+   "name": "GammaTime WEB"
+  }
+ ],
+ "editors": [
+  {
+   "name": "Bogdan",
+   "pattern": "_by(\\b|_|$)|_yb_"
+  },
+  {
+   "name": "Denis",
+   "pattern": "^(meta|tt)_\\d"
+  }
+ ],
+ "default_editor": "Spikes",
+ "series": [
+  {
+   "title": "The Summer I Turned My Sexiest",
+   "ad_name_patterns": [
+    "Sexy_Milfy",
+    "milfy2",
+    "Summer_Her",
+    "summer_her",
+    "Nice_Woman",
+    "summer_tiktok",
+    "milfy"
+   ]
+  },
+  {
+   "title": "Hot Priest",
+   "ad_name_patterns": [
+    "hot_priest",
+    "S0012_Master"
+   ]
+  },
+  {
+   "title": "My Fake Office Fiance",
+   "ad_name_patterns": [
+    "office",
+    "fake_office",
+    "OFFICE",
+    "Fake_Fiance",
+    "fake_fiance"
+   ]
+  },
+  {
+   "title": "The Summer of Him",
+   "ad_name_patterns": [
+    "Summer_of_Him",
+    "him2"
+   ]
+  },
+  {
+   "title": "Leaving Mr. Wrong for Mr. Right",
+   "ad_name_patterns": [
+    "mrwrong",
+    "mr_wrong",
+    "_right_",
+    "mrwrong",
+    "_wrong"
+   ]
+  },
+  {
+   "title": "The Road Between Us",
+   "ad_name_patterns": [
+    "road_between",
+    "RoadBetween"
+   ]
+  },
+  {
+   "title": "The Professor's Secret",
+   "ad_name_patterns": [
+    "professor",
+    "S0013_Master"
+   ]
+  },
+  {
+   "title": "The Miracle on Dream Street",
+   "ad_name_patterns": [
+    "miracle",
+    "dream_street",
+    "Miracle_In_Dream_Street",
+    "Miracle_New"
+   ]
+  },
+  {
+   "title": "The Player",
+   "ad_name_patterns": [
+    "player"
+   ]
+  },
+  {
+   "title": "The Royal Wedding Planner",
+   "ad_name_patterns": [
+    "royal",
+    "wedding_planner",
+    "Royal_Wedding"
+   ]
+  },
+  {
+   "title": "How to Lose an F-Boy",
+   "ad_name_patterns": [
+    "Fboy",
+    "FBOY",
+    "fboy",
+    "F-Boy",
+    "S0014_MASTERS",
+    "seg_",
+    "htlafb"
+   ]
+  },
+  {
+   "title": "Fashionably in Love",
+   "ad_name_patterns": [
+    "Fashionably",
+    "FashionablyInLove"
+   ]
+  },
+  {
+   "title": "Love Amongst The Stars",
+   "ad_name_patterns": [
+    "LoveAmongstTheStars"
+   ]
+  },
+  {
+   "title": "I Hate You, Let's Date",
+   "ad_name_patterns": [
+    "_loopA",
+    "_loopB",
+    "_loopC",
+    "_loopD",
+    "_loopE",
+    "_loopF",
+    "_loopG",
+    "S0015_MASTER",
+    "ihyld",
+    "hate"
+   ]
+  },
+  {
+   "title": "Skating To Him",
+   "ad_name_patterns": [
+    "SkatingToHim",
+    "S0016_MASTER",
+    "skating"
+   ]
+  },
+  {
+   "title": "Accidentally Engaged",
+   "ad_name_patterns": [
+    "WETM",
+    "engaged",
+    "kbitfl",
+    "accident"
+   ]
+  },
+  {
+   "title": "Lemonade Stand Romance",
+   "ad_name_patterns": [
+    "hook04_permit",
+    "hook05_apology"
+   ]
+  },
+  {
+   "title": "Stolen to Save Her",
+   "ad_name_patterns": [
+    "STSH",
+    "stolen"
+   ]
+  },
+  {
+   "title": "Build a Boyfriend",
+   "ad_name_patterns": [
+    "S0018",
+    "boyfriend"
+   ]
+  }
+ ],
+ "campaign_series_codes": {
+  "FBOY": "How to Lose an F-Boy",
+  "BOYFRIEND": "Build a Boyfriend",
+  "PROFESSOR": "The Professor's Secret",
+  "WRONG": "Leaving Mr. Wrong for Mr. Right",
+  "SKATING": "Skating To Him",
+  "STOLEN": "Stolen to Save Her",
+  "PRIEST": "Hot Priest",
+  "OFFICE": "My Fake Office Fiance",
+  "HATE": "I Hate You, Let's Date",
+  "ROYAL": "The Royal Wedding Planner",
+  "MIRACLE": "The Miracle on Dream Street",
+  "PLAYER": "The Player",
+  "LEMONADE": "Lemonade Stand Romance",
+  "SEXIEST": "The Summer I Turned My Sexiest",
+  "MILFY": "The Summer I Turned My Sexiest",
+  "HIM": "The Summer of Him",
+  "ROAD": "The Road Between Us",
+  "ENGAGED": "Accidentally Engaged",
+  "FASHION": "Fashionably in Love",
+  "STARS": "Love Amongst The Stars"
+ }
+}
