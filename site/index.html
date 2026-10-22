@@ -42,7 +42,8 @@ h1{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em}
 .chip{border:1px solid var(--line);background:var(--panel2);padding:6px 12px;border-radius:999px;cursor:pointer;font-weight:500;font-size:13px}
 .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 select,input[type=date],input[type=search],input[type=password]{border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:7px 10px;min-height:34px}
-select{max-width:240px}
+select{max-width:320px}
+tr.go{cursor:pointer}
 .check{display:flex;align-items:center;gap:6px;font-size:13px;min-height:34px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
 .kpi{padding:14px 16px}
@@ -193,12 +194,12 @@ function buildFilters(){
   const eds = ["All", ...D.editors];
   $("#editors").innerHTML = eds.map(e => `<button class="chip" data-e="${esc(e)}">${esc(e)}</button>`).join("");
   $("#editors").onclick = e => { const b = e.target.closest("[data-e]"); if (!b) return; state.editor = b.dataset.e; state.limit = 150; render(); };
-  const ser = [...new Set(AD.map(a => a.series))].sort((a, b) => a === "Other" ? 1 : b === "Other" ? -1 : a.localeCompare(b));
-  $("#series").innerHTML = ["All", ...ser].map(s => `<option>${esc(s)}</option>`).join("");
   $("#series").onchange = e => { state.series = e.target.value; state.limit = 150; render(); };
   const acc = [...new Set(AD.map(a => a.account))];
   $("#account").innerHTML = ["All", ...acc].map(s => `<option>${esc(s)}</option>`).join("");
   $("#account").onchange = e => { state.account = e.target.value; render(); };
+  $("#tbl").onclick = e => { if (state.tab !== "series") return; const tr = e.target.closest("tr[data-g]"); if (!tr) return;
+    state.series = tr.dataset.g; state.tab = "creatives"; state.sort = {key:"spend", dir:-1}; state.limit = 150; render(); };
   const presets = [["7d",7],["14d",14],["30d",30],["90d",90]];
   $("#presets").innerHTML = presets.map(([l, n]) => `<button class="chip" data-n="${n}">Last ${l}</button>`).join("");
   $("#presets").onclick = e => { const b = e.target.closest("[data-n]"); if (!b) return;
@@ -265,6 +266,19 @@ function compute(){
   return {crs, whole:finish(whole), lo, hi};
 }
 
+// series dropdown: only the series the chosen editor worked on in this period/account, biggest spend first
+function buildSeries(){
+  const lo = dayIdx(state.from), hi = dayIdx(state.to), m = new Map();
+  for (const r of ROWS) { if (r[0] < lo || r[0] > hi) continue; const a = AD[r[1]];
+    if ((state.editor !== "All" && a.editor !== state.editor) || (state.account !== "All" && a.account !== state.account)) continue;
+    if (!m.has(a.series)) m.set(a.series, {spend:0, crs:new Set()}); const x = m.get(a.series); x.spend += r[2]; x.crs.add(a.editor + "|" + a.creative); }
+  const ser = [...m.keys()].sort((a, b) => a === "Other" ? 1 : b === "Other" ? -1 : m.get(b).spend - m.get(a).spend);
+  if (state.series !== "All" && !m.has(state.series)) state.series = "All";
+  $("#series").innerHTML = `<option value="All">All (${ser.length} series)</option>` +
+    ser.map(s => `<option value="${esc(s)}">${esc(s)} · ${m.get(s).crs.size} creative${m.get(s).crs.size > 1 ? "s" : ""} · ${fmt$(m.get(s).spend)}</option>`).join("");
+  $("#series").value = state.series;
+}
+
 // ---------- rendering ----------
 let C;
 function render(){
@@ -273,7 +287,7 @@ function render(){
   document.querySelectorAll("#presets .chip").forEach(b => { const t = new Date(D.until + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() - (+b.dataset.n - 1));
     const f = iso(t) < D.since ? D.since : iso(t); b.classList.toggle("on", state.to === D.until && state.from === f); });
   $("#from").value = state.from; $("#to").value = state.to;
-  C = compute(); renderKpis(); renderTable();
+  buildSeries(); C = compute(); renderKpis(); renderTable();
 }
 function renderKpis(){
   const t = finish(C.crs.reduce((acc, c) => { for (const k of ["spend","impr","clicks","purch","value","p25","p50","p75","p100","thru","watch","plays"]) acc[k] += c[k]; return acc; }, blank()));
@@ -357,7 +371,7 @@ function renderTable(){
   C.view = {cs, rows};
   const shown = rows.slice(0, state.limit);
   $("#tbl").innerHTML = `<thead><tr>${cs.map(c => `<th class="${c[4] ? "l" : ""}" data-k="${c[0]}">${c[1]} <span class="arr">${state.sort.key === c[0] ? (state.sort.dir < 0 ? "↓" : "↑") : ""}</span></th>`).join("")}</tr></thead>
-    <tbody>${shown.map(t => `<tr>${cs.map(c => `<td class="${c[4] ? "l" : ""}${c[0] === "creative" ? " name" : ""}">${c[3](c[2](t), t)}</td>`).join("")}</tr>`).join("") ||
+    <tbody>${shown.map(t => `<tr${state.tab === "series" ? ` class="go" data-g="${esc(t.g)}" title="Show this series' creatives"` : ""}>${cs.map(c => `<td class="${c[4] ? "l" : ""}${c[0] === "creative" ? " name" : ""}">${c[3](c[2](t), t)}</td>`).join("")}</tr>`).join("") ||
     `<tr><td class="l muted" colspan="${cs.length}" style="padding:30px">Nothing matches these filters.</td></tr>`}</tbody>`;
   $("#tbl thead").onclick = e => { const th = e.target.closest("th"); if (!th) return; const k = th.dataset.k;
     state._wsorted = true; state.sort = {key:k, dir: state.sort.key === k ? -state.sort.dir : (["creative","editor","format","music","g","breaks","trend"].includes(k) ? 1 : -1)}; renderTable(); };
@@ -365,6 +379,7 @@ function renderTable(){
   $("#morewrap").hidden = rows.length <= state.limit;
   $("#note").textContent = state.tab === "creatives"
     ? "A creative = all ads with the same file name (copies merged). ROAS = purchase value ÷ spend, 7-day click / 1-day view. “Where it breaks” compares link CTR and click→purchase against the median of all tested creatives in the same filters. Trend compares the last two weeks of the period."
+    : state.tab === "series" ? "Totals for the creatives that match the current filters. Click a series to see its creatives."
     : "Totals for the creatives that match the current filters.";
 }
 
@@ -390,7 +405,7 @@ function exportXlsx(){
   const info = [["Gamma Creative Analytics"],["Editor", state.editor],["Series", state.series],["Account", state.account],["From", state.from],["To", state.to],["Search", state.q || "–"],["Tested only", crs ? "yes (spend ≥ $15)" : "no"],["Data updated", D.generated]];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), "Filters");
   for (const [k, n] of [["creatives","Creatives"],["series","By Series"],["weekly","Weekly"],["music","Music"],["format","Format"],["campaigns","Campaigns"]]) XLSX.utils.book_append_sheet(wb, sheetFrom(k), n);
-  const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor} - ${state.from} to ${state.to}.xlsx`;
+  const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor}${state.series === "All" ? "" : " - " + state.series.replace(/[\\/:*?"<>|]/g, "")} - ${state.from} to ${state.to}.xlsx`;
   XLSX.writeFile(wb, name);
 }
 </script>
