@@ -1,8 +1,8 @@
 name: Refresh data
 on:
   schedule:
-    - cron: "30 3 * * *"   # every night, 06:30 Israel time (05:30 in winter)
-    - cron: "30 5 * * *"   # backup two hours later, in case GitHub skips the first
+    - cron: "0 8 * * *"    # every morning, 10:00 Israel winter time (11:00 in summer)
+    - cron: "0 10 * * *"   # backup two hours later, in case GitHub skips the first
   workflow_dispatch:
   push:
     branches: [main]
