@@ -67,8 +67,12 @@ def get_raw(full_url, tries=6):
             time.sleep(15 * (i + 1))
 
 
-def insights(account_id, since, until):
-    """Async report job — large ranges time out as plain GET."""
+class ReportFailed(RuntimeError):
+    pass
+
+
+def report_rows(account_id, since, until):
+    """One async report job — large ranges time out as plain GET."""
     job = get(f"{API}/{account_id}/insights", {
         "level": "ad", "time_increment": 1, "fields": FIELDS,
         "time_range": json.dumps({"since": since, "until": until}),
@@ -81,11 +85,28 @@ def insights(account_id, since, until):
         if st["async_status"] == "Job Completed":
             break
         if st["async_status"] in ("Job Failed", "Job Skipped"):
-            raise RuntimeError(f"report {rid} failed for {account_id}")
+            raise ReportFailed(f"report {rid} {st['async_status']} for {account_id} {since}..{until}")
         print(f"  {account_id} job {st.get('async_percent_completion')}%", file=sys.stderr, flush=True)
         time.sleep(5)
     print(f"  {account_id} {since}..{until} job done, paging", file=sys.stderr, flush=True)
-    yield from paged(f"{API}/{rid}/insights", {"limit": 500})
+    return list(paged(f"{API}/{rid}/insights", {"limit": 500}))
+
+
+def insights(account_id, since, until):
+    """Meta async jobs fail at random now and then: retry, then split the range in half."""
+    for attempt in range(3):
+        try:
+            return report_rows(account_id, since, until)
+        except ReportFailed as e:
+            print(f"  {e}; retry {attempt + 1}/3", file=sys.stderr, flush=True)
+            time.sleep(30 * (attempt + 1))
+    s, u = dt.date.fromisoformat(since), dt.date.fromisoformat(until)
+    if (u - s).days < 2:
+        raise ReportFailed(f"{account_id} {since}..{until} keeps failing")
+    mid = s + (u - s) // 2
+    print(f"  splitting {since}..{until}", file=sys.stderr, flush=True)
+    return (insights(account_id, since, mid.isoformat()) +
+            insights(account_id, (mid + dt.timedelta(days=1)).isoformat(), until))
 
 
 def act(lst, kind="purchase"):
