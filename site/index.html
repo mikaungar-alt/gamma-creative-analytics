@@ -166,7 +166,10 @@ $("#lockform").onsubmit = async e => {
 };
 (async () => { let pw = null; try { pw = localStorage.getItem(PW_KEY); } catch(e){}
   if (location.hash.startsWith("#pw=")) { pw = decodeURIComponent(location.hash.slice(4)); history.replaceState(null, "", location.pathname); }
-  if (pw) { try { D = await unlock(pw); start(); } catch(e){ console.error('unlock failed', e && (e.stack||e.message||e)); try{localStorage.removeItem(PW_KEY);}catch(_){} } } })();
+  if (pw) { // saved password: lock the form while it opens, so a typed password is never mistaken for the one that worked
+    const fs = [...document.querySelectorAll("#lockform input, #lockform button")]; fs.forEach(x => x.disabled = true); $("#err").textContent = "Opening with the saved password…";
+    try { D = await unlock(pw); start(); } catch(e){ console.error('unlock failed', e && (e.stack||e.message||e)); try{localStorage.removeItem(PW_KEY);}catch(_){}
+      fs.forEach(x => x.disabled = false); $("#err").textContent = "The saved password no longer works. Enter the team password."; } } })();
 
 // ---------- helpers ----------
 const fmt$ = v => v == null || !isFinite(v) ? "–" : "$" + (Math.abs(v) >= 1000 ? Math.round(v).toLocaleString("en-US") : v.toFixed(v < 10 ? 2 : 0));
