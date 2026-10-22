@@ -26,7 +26,14 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install cryptography==43.0.3
+      # A push only changes the page: reuse the data already live, pull from Meta only if that fails
+      - name: Reuse the live data
+        id: reuse
+        if: github.event_name == 'push'
+        continue-on-error: true
+        run: curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc" && python -c "import json;d=json.load(open('site/data.enc'));assert d['ct']"
       - name: Pull Meta data and encrypt
+        if: github.event_name != 'push' || steps.reuse.outcome != 'success'
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
