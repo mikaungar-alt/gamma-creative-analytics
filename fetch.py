@@ -143,6 +143,8 @@ def editor_of(key):
 
 SERIES_RULES = [(p.lower(), s["title"]) for s in CONFIG["series"] for p in s["ad_name_patterns"]]
 CAMPAIGN_CODES = {k.upper(): v for k, v in CONFIG["campaign_series_codes"].items()}
+GEOS = set(CONFIG["campaign_geos"])
+NOT_SERIES = set(CONFIG["campaign_codes_not_series"])
 
 
 def series_of(key, campaign):
@@ -154,6 +156,10 @@ def series_of(key, campaign):
     for p in parts[1:5]:
         if p in CAMPAIGN_CODES:
             return CAMPAIGN_CODES[p]
+    # a new series shows up under its campaign code (US_GIRLFRIEND_...) until config.json names it
+    raw = campaign.split("_")
+    if len(raw) > 1 and parts[0] in GEOS and re.fullmatch(r"[A-Z]{3,}", raw[1]) and raw[1] not in NOT_SERIES:
+        return raw[1]
     return "Other"
 
 

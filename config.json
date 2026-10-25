@@ -219,6 +219,26 @@
   "FASHION": "Fashionably in Love",
   "STARS": "Love Amongst The Stars",
   "SUMMER": "The Summer I Turned My Sexiest",
-  "GIRLFRIEND": "Be My Girlfriend, Gossip Queen"
- }
+  "GIRLFRIEND": "Be My Girlfriend, Gossip Queen",
+  "ACCIDENTALLY": "Accidentally Engaged"
+ },
+ "campaign_geos": [
+  "US",
+  "ROW",
+  "WW",
+  "IL",
+  "UK",
+  "CA",
+  "AU",
+  "EU"
+ ],
+ "campaign_codes_not_series": [
+  "ROMANCE",
+  "TEST",
+  "ALL",
+  "APP",
+  "INSTALLS",
+  "DUMMY",
+  "BRAND"
+ ]
 }
