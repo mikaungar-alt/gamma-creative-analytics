@@ -151,7 +151,7 @@ def series_of(key, campaign):
         if p in low:
             return t
     parts = campaign.upper().split("_")
-    for p in parts[2:5]:
+    for p in parts[1:5]:
         if p in CAMPAIGN_CODES:
             return CAMPAIGN_CODES[p]
     return "Other"

@@ -26,6 +26,13 @@
  "default_editor": "Spikes",
  "series": [
   {
+   "title": "Be My Girlfriend, Gossip Queen",
+   "ad_name_patterns": [
+    "girlfriend",
+    "gossip"
+   ]
+  },
+  {
    "title": "The Summer I Turned My Sexiest",
    "ad_name_patterns": [
     "Sexy_Milfy",
@@ -210,6 +217,7 @@
   "ENGAGED": "Accidentally Engaged",
   "FASHION": "Fashionably in Love",
   "STARS": "Love Amongst The Stars",
-  "SUMMER": "The Summer I Turned My Sexiest"
+  "SUMMER": "The Summer I Turned My Sexiest",
+  "GIRLFRIEND": "Be My Girlfriend, Gossip Queen"
  }
 }
