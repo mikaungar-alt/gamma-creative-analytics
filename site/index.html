@@ -65,8 +65,8 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
 .drv{color:var(--accent,#2563eb);text-decoration:none;font-weight:600}.drv:hover{text-decoration:underline}
 .thumb{width:38px;height:52px;border-radius:6px;object-fit:cover;background:var(--line);display:block}
 .cr{display:flex;gap:10px;align-items:center}
-.cr .t{font-weight:600;max-width:440px;overflow-wrap:anywhere}
-.cr .s{font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.cr .t{font-weight:600;max-width:440px;overflow-wrap:break-word}
+.cr .s{font-size:11.5px;color:var(--muted);overflow-wrap:break-word}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600}
 .pill.g{background:var(--good-soft);color:var(--good)}.pill.b{background:var(--bad-soft);color:var(--bad)}.pill.w{background:var(--warn-soft);color:var(--warn)}.pill.n{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
 .ed{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
@@ -322,7 +322,7 @@ const MET = [
 ];
 function cols(){
   if (state.tab === "creatives") return [
-    ["creative","Creative",t=>t.meta.creative,(v,t)=>`<div class="cr">${t.meta.thumb?`<img class="thumb" loading="lazy" src="${esc(t.meta.thumb)}" data-big="${esc(t.meta.thumb)}" alt="">`:`<div class="thumb"></div>`}<div><div class="t" title="${esc(v)}">${esc(v)}</div><div class="s">${t.meta.drive?`<a class="drv" href="https://drive.google.com/file/d/${esc(t.meta.drive)}/view" target="_blank" rel="noopener">Drive ↗</a> · `:""}${esc(t.meta.series)} · ${t.nAds} ad${t.nAds>1?"s":""} · ${t.camps.size} campaign${t.camps.size>1?"s":""}</div></div></div>`,1],
+    ["creative","Creative",t=>t.meta.creative,(v,t)=>`<div class="cr">${t.meta.thumb?`<img class="thumb" loading="lazy" src="${esc(t.meta.thumb)}" data-big="${esc(t.meta.thumb)}" alt="">`:`<div class="thumb"></div>`}<div><div class="t" title="${esc(v)}">${esc(v).replace(/([_\-.])/g, "$1<wbr>")}</div><div class="s">${t.meta.drive?`<a class="drv" href="https://drive.google.com/file/d/${esc(t.meta.drive)}/view" target="_blank" rel="noopener">Drive ↗</a> · `:""}${esc(t.meta.series)} · ${t.nAds} ad${t.nAds>1?"s":""} · ${t.camps.size} campaign${t.camps.size>1?"s":""}</div></div></div>`,1],
     ["editor","Editor",t=>t.meta.editor,v=>`<span class="ed">${esc(v)}</span>`,1],
     ["format","Format",t=>t.meta.format,v=>esc(v)||'<span class="muted">–</span>',1],
     ["music","Music",t=>t.meta.music,v=>esc(v)||'<span class="muted">–</span>',1],
