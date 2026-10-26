@@ -225,10 +225,16 @@ def drive_matcher(dmap):
     import bisect
     keys = sorted(dmap)
 
+    aliases = [(a.lower(), b.lower()) for a, b in CONFIG.get("drive_name_aliases", {}).items() if a != "_note"]
+
     def match(creative):
         k = drive_norm(creative)
         if not k:
             return ""
+        for a, b in aliases:  # Bohdan renamed 14_FBOY_NN_BY to 14_HTLAFB_NN_BY for Liran (Mika, 26.10)
+            alt = re.sub(r"(^|_)" + a + r"(_|$)", r"\g<1>" + b + r"\g<2>", k)
+            if alt != k and alt in dmap:
+                return dmap[alt]
         if k in dmap:
             return dmap[k]
         base = re.sub(r"_\d{1,2}_\d{1,2}_\d{4}(_\d{3,4})?$", "", k)  # Pop's _10-14-2026_1607

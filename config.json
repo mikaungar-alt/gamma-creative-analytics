@@ -258,5 +258,9 @@
    "id": "1kq-TErpGDu_KDjctKWcb3VSklnk3F5rm",
    "name": "Gammatime Ads Creatives (editors)"
   }
- ]
+ ],
+ "drive_name_aliases": {
+  "_note": "Meta name part -> Drive name part, for files renamed after upload",
+  "HTLAFB": "FBOY"
+ }
 }
