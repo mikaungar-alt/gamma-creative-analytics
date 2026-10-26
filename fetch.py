@@ -203,7 +203,7 @@ def drive_norm(name):
     n = re.sub(r"^(copy of\s+)+", "", n)
     n = re.sub(r"(\s*[-–]\s*copy(\s*\d+)?)+$", "", n)
     n = re.sub(r"\s*\(\d+\)$", "", n)
-    n = re.sub(r"^\d{2}_", "", n)
+    n = re.sub(r"^(\d{2}_)+", "", n)  # files carry 00_ in front of the rank: 00_18_BOYFRIEND_... (Mika, 26.10)
     n = n.replace(" x ", "__")
     return re.sub(r"[^a-z0-9]", "_", n)
 
@@ -311,6 +311,7 @@ def main():
             links[key] = match(key)
         ad_list[ad_index[aid]] = a + [music_of(key), format_of(key), ratio_of(key), links[key]]
     print(f"drive links: {sum(1 for v in links.values() if v)} of {len(links)} creatives", file=sys.stderr)
+    print("no drive link:", " | ".join(k for k, v in links.items() if not v), file=sys.stderr)
 
     payload = {
         "generated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
