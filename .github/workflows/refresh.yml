@@ -34,7 +34,6 @@ jobs:
         run: curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc" && python -c "import json;d=json.load(open('site/data.enc'));assert d['ct']"
       # Kfir pushes the encrypted file name -> Drive link map to the drive-map branch every morning
       - name: Get the Drive map
-        if: github.event_name != 'push' || steps.reuse.outcome != 'success'
         continue-on-error: true
         run: git fetch --depth 1 origin drive-map && git show FETCH_HEAD:drive.enc > drive.enc
       - name: Pull Meta data and encrypt
@@ -45,6 +44,14 @@ jobs:
           DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
           DAYS: "90"
         run: python -u fetch.py
+      # A push reuses the live numbers: only redo the Drive links (a minute, not a Meta pull)
+      - name: Redo the Drive links
+        if: github.event_name == 'push' && steps.reuse.outcome == 'success'
+        continue-on-error: true
+        env:
+          DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
+          DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
+        run: python -u fetch.py --relink
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

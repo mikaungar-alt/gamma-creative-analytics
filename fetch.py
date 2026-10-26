@@ -11,7 +11,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 API = "https://graph.facebook.com/v21.0"
-TOKEN = os.environ["META_TOKEN"]
+TOKEN = os.environ.get("META_TOKEN", "")
 PASSWORD = os.environ["DASH_PASSWORD"]
 DAYS = int(os.environ.get("DAYS", "90"))
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -339,5 +339,31 @@ def main():
     print(f"ads={len(ad_list)} rows={len(rows)} gz={len(raw)//1024}KB", file=sys.stderr)
 
 
+def relink():
+    """Only the Drive links changed: open the live data, redo the drive column, lock it again.
+    Seconds instead of a full Meta pull."""
+    path = os.path.join(ROOT, "site", "data.enc")
+    d = json.load(open(path))
+    key = PBKDF2HMAC(hashes.SHA256(), 32, base64.b64decode(d["salt"]), d["iter"]).derive(PASSWORD.encode())
+    payload = json.loads(gzip.decompress(AESGCM(key).decrypt(base64.b64decode(d["iv"]), base64.b64decode(d["ct"]), None)))
+    cols = payload["ad_cols"]
+    if "drive" not in cols:
+        cols.append("drive")
+        for a in payload["ads"]:
+            a.append("")
+    ci, di = cols.index("creative"), cols.index("drive")
+    match, links = drive_matcher(load_drive()), {}
+    for a in payload["ads"]:
+        if a[ci] not in links:
+            links[a[ci]] = match(a[ci])
+        a[di] = links[a[ci]]
+    print(f"drive links: {sum(1 for v in links.values() if v)} of {len(links)} creatives", file=sys.stderr)
+    raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
+    iv = os.urandom(12)
+    ct = AESGCM(key).encrypt(iv, raw, None)
+    with open(path, "w") as f:
+        json.dump(dict(d, iv=base64.b64encode(iv).decode(), ct=base64.b64encode(ct).decode()), f)
+
+
 if __name__ == "__main__":
-    main()
+    relink() if "--relink" in sys.argv else main()
