@@ -122,6 +122,7 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
     <div class="tabs" id="tabs"></div>
     <div class="toolbar">
       <input type="search" id="q" placeholder="Search creative name…" style="flex:1;min-width:180px;max-width:360px">
+      <label class="check" id="dimwrap" hidden>Break down by <select id="dim"></select></label>
       <label class="check"><input type="checkbox" id="tested" checked> Tested only (spend ≥ $15)</label>
       <span class="spacer"></span><span class="muted" id="count"></span>
     </div>
@@ -184,9 +185,34 @@ const iso = d => d.toISOString().slice(0, 10);
 const dayIdx = s => Math.round((new Date(s + "T00:00:00Z") - new Date(D.since + "T00:00:00Z")) / 864e5);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+// ---------- editors' naming convention (dictionary sheet 10WxSmbwt3jEiQiWc9TFwgDW5jRyZhd7L7Tj66Ltx61s, 26.10) ----------
+// SERIES_EDITOR_BATCH_AD_<duration>_<edit>_<inserts>_<graphics>_<cta>_<voiceover>_mx<song>
+const NAMING = {
+  edit: {TJ:"Time jump (hook + loop)", TSR:"Teaser", TRLR:"Trailer", EP:"Full episode", SC:"Full scene", FAN:"Fan edit"},
+  ins: {"0":"None", PROMO:"Promo", BTS:"Behind the scenes", AI:"AI-generated footage", BLOG:"Blogger", STOCK:"Stock footage"},
+  gfx: {"0":"None", STORY:"Story", TMR:"Timer", POV:"POV", FLAG:"Red flags", EXVRL:"Expectation vs reality", AITA:"AITA", DIL:"Dilemma",
+        QUIZ:"Quiz", REV:"Review", COMM:"Comments", CAST:"Cast", NEWS:"News"},
+  cta: {"0":"None", NEWEP:"New episode", FREE:"Free episodes", WATCH:"Watch now", LOCK:"Scene locked"},
+  vo: {"0":"None", NAR:"Narrator", CH:"Character"},
+};
+const DIMS = [["dur","Duration"],["edit","Edit type"],["ins","Inserts"],["gfx","Graphics"],["cta","CTA"],["vo","Voiceover"],["mx","Music"]];
+const OLD_NAME = "(old naming)";
+function parseNaming(name){
+  const tk = String(name).split("_"), i = tk.findIndex(x => /^\d+(s|m)$/i.test(x));
+  if (i < 0 || !NAMING.edit[(tk[i + 1] || "").toUpperCase()]) return {nc:false};
+  const out = {nc:true, dur:tk[i].toLowerCase()};
+  ["edit","ins","gfx","cta","vo"].forEach((k, j) => { const c = (tk[i + 1 + j] || "").toUpperCase();
+    out[k] = NAMING[k][c] || (c ? `Unknown code: ${c}` : "Missing"); });
+  const m = tk.find(x => /^mx\d{3}$/i.test(x)); out.mx = m ? m.toUpperCase() : "Missing";
+  return out;
+}
+
 function start(){
   $("#lock").hidden = true; $("#app").hidden = false;
   const ac = D.ad_cols; AD = D.ads.map(a => Object.fromEntries(ac.map((k, i) => [k, a[i]])));
+  for (const a of AD) { Object.assign(a, parseNaming(a.creative)); if (a.nc && !a.music && a.mx !== "Missing") a.music = a.mx; }
+  state.dim = "edit"; $("#dim").innerHTML = DIMS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
+  $("#dim").onchange = e => { state.dim = e.target.value; state.sort = {key:"spend", dir:-1}; renderTable(); };
   ROWS = D.rows;
   $("#updated").textContent = `Meta · ${D.since} → ${D.until} · updated ${D.generated}`;
   state.to = D.until; const f = new Date(D.until + "T00:00:00Z"); f.setUTCDate(f.getUTCDate() - 13); state.from = iso(f) < D.since ? D.since : iso(f);
@@ -213,7 +239,7 @@ function buildFilters(){
   $("#to").onchange = e => { state.to = e.target.value || D.until; render(); };
   $("#q").oninput = e => { state.q = e.target.value.toLowerCase(); state.limit = 150; renderTable(); };
   $("#tested").onchange = e => { state.tested = e.target.checked; renderTable(); };
-  const tabs = [["creatives","Creatives"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["campaigns","Campaigns"]];
+  const tabs = [["creatives","Creatives"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["campaigns","Campaigns"]];
   $("#tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab" data-t="${k}">${l}</button>`).join("");
   $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = {key:"spend", dir:-1}; state.limit = 150; render(); };
   $("#more").onclick = () => { state.limit += 300; renderTable(); };
@@ -331,14 +357,14 @@ function cols(){
     ["wk","ROAS by week",t=>t.wroas[3],(v,t)=>spark(t.wroas),1],
     ["trend","Trend",t=>t.trend,trendPill,1],
   ];
-  const label = {series:"Series", music:"Music", format:"Format", campaigns:"Campaign", weekly:"Week"}[state.tab];
+  const label = {series:"Series", music:"Music", format:"Format", campaigns:"Campaign", weekly:"Week", naming:(DIMS.find(d => d[0] === state.dim) || [,""])[1]}[state.tab];
   return [["g",label,t=>t.g,v=>esc(v),1],["n","Creatives",t=>t.nCr,fmtN],["nt","Tested",t=>t.nT,fmtN],...MET.slice(0,7),...MET.slice(7)];
 }
 function groupRows(){
   let crs = C.crs.filter(t => !state.q || t.meta.creative.toLowerCase().includes(state.q));
   if (state.tab === "creatives") return state.tested ? crs.filter(t => t.spend >= 15) : crs;
   if (state.tab === "weekly") return weekly();
-  const keyFn = {series:t=>[t.meta.series], music:t=>[t.meta.music||"(none in name)"], format:t=>[t.meta.format||"(none in name)"], campaigns:t=>[...t.camps]}[state.tab];
+  const keyFn = {series:t=>[t.meta.series], music:t=>[t.meta.music||"(none in name)"], format:t=>[t.meta.format||"(none in name)"], naming:t=>[t.meta.nc ? t.meta[state.dim] : OLD_NAME], campaigns:t=>[...t.camps]}[state.tab];
   const g = new Map();
   for (const t of crs) for (const k of keyFn(t)) {
     if (!g.has(k)) g.set(k, Object.assign(blank(), {g:k, nCr:0, nT:0}));
@@ -366,6 +392,7 @@ function weekly(){
   return out;
 }
 function renderTable(){
+  $("#dimwrap").hidden = state.tab !== "naming";
   const cs = cols(); let rows = groupRows();
   const sc = cs.find(c => c[0] === state.sort.key) || cs.find(c => c[0] === "spend");
   if (state.tab === "weekly" && state.sort.key === "spend" && state.sort.dir === -1 && !state._wsorted) rows.sort((a, b) => b._o - a._o);
@@ -384,6 +411,7 @@ function renderTable(){
   $("#note").textContent = state.tab === "creatives"
     ? "A creative = all ads with the same file name (copies merged). ROAS = purchase value ÷ spend, 7-day click / 1-day view. “Where it breaks” compares link CTR and click→purchase against the median of all tested creatives in the same filters. Trend compares the last two weeks of the period."
     : state.tab === "series" ? "Totals for the creatives that match the current filters. Click a series to see its creatives."
+    : state.tab === "naming" ? "Reads the editors' naming convention from the file name: SERIES_EDITOR_BATCH_AD_duration_edit_inserts_graphics_cta_voiceover_mx###. Files named before the convention show as “(old naming)”."
     : "Totals for the creatives that match the current filters.";
 }
 
@@ -398,9 +426,20 @@ function sheetFrom(tab){
   const keep = {tab:state.tab, limit:state.limit}; state.tab = tab; const cs = cols(); const rows = groupRows();
   rows.sort((a, b) => tab === "weekly" ? b._o - a._o : (b.spend - a.spend)); state.tab = keep.tab;
   const plain = (c, t) => { const v = c[2](t); if (c[0] === "wk") return t.wroas.map(fmtR).join(" · "); return typeof v === "number" ? Math.round(v * 100) / 100 : v ?? ""; };
-  const head = cs.map(c => c[1]); if (tab === "creatives") head.splice(1, 0, "Series", "Ads", "Campaigns", "Ratio", "Drive");
-  const body = rows.map(t => { const r = cs.map(c => plain(c, t)); if (tab === "creatives") r.splice(1, 0, t.meta.series, t.nAds, [...t.camps].join(" | "), t.meta.ratio, t.meta.drive ? "https://drive.google.com/file/d/" + t.meta.drive + "/view" : ""); return r; });
+  const head = cs.map(c => c[1]); if (tab === "creatives") head.splice(1, 0, "Series", "Ads", "Campaigns", "Ratio", "Drive", ...DIMS.map(d => d[1]));
+  const body = rows.map(t => { const r = cs.map(c => plain(c, t)); if (tab === "creatives") r.splice(1, 0, t.meta.series, t.nAds, [...t.camps].join(" | "), t.meta.ratio, t.meta.drive ? "https://drive.google.com/file/d/" + t.meta.drive + "/view" : "", ...DIMS.map(d => t.meta.nc ? t.meta[d[0]] : "")); return r; });
   return XLSX.utils.aoa_to_sheet([head, ...body]);
+}
+// every naming field on one sheet: Field | Value | the usual metrics
+function namingSheet(){
+  const keep = {tab:state.tab, dim:state.dim}, out = [];
+  for (const [k, l] of DIMS) {
+    state.tab = "naming"; state.dim = k; const cs = cols(); const rows = groupRows().sort((a, b) => b.spend - a.spend);
+    if (!out.length) out.push(["Field", ...cs.map(c => c[1]).slice(0, 1).map(() => "Value"), ...cs.slice(1).map(c => c[1])]);
+    for (const t of rows) out.push([l, ...cs.map(c => { const v = c[2](t); return typeof v === "number" ? Math.round(v * 100) / 100 : v ?? ""; })]);
+  }
+  Object.assign(state, keep);
+  return XLSX.utils.aoa_to_sheet(out);
 }
 function exportXlsx(){
   if (!window.XLSX) return;
@@ -409,6 +448,7 @@ function exportXlsx(){
   const info = [["Gamma Creative Analytics"],["Editor", state.editor],["Series", state.series],["Account", state.account],["From", state.from],["To", state.to],["Search", state.q || "–"],["Tested only", crs ? "yes (spend ≥ $15)" : "no"],["Data updated", D.generated]];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), "Filters");
   for (const [k, n] of [["creatives","Creatives"],["series","By Series"],["weekly","Weekly"],["music","Music"],["format","Format"],["campaigns","Campaigns"]]) XLSX.utils.book_append_sheet(wb, sheetFrom(k), n);
+  XLSX.utils.book_append_sheet(wb, namingSheet(), "Naming");
   const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor}${state.series === "All" ? "" : " - " + state.series.replace(/[\\/:*?"<>|]/g, "")} - ${state.from} to ${state.to}.xlsx`;
   XLSX.writeFile(wb, name);
 }
