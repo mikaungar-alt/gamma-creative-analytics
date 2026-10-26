@@ -24,7 +24,7 @@
   },
   {
    "name": "Mikita",
-   "pattern": "(?!)"
+   "pattern": "_tz(\\b|_|$)"
   }
  ],
  "default_editor": "Spikes",
