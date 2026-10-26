@@ -20,7 +20,7 @@
   },
   {
    "name": "Denis",
-   "pattern": "^(meta|tt)_\\d"
+   "pattern": "^(meta|tt)_\\d|_dg(\\b|_|$)"
   },
   {
    "name": "Mikita",
