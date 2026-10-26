@@ -244,5 +244,19 @@
   "INSTALLS",
   "DUMMY",
   "BRAND"
+ ],
+ "drive_folders": [
+  {
+   "id": "11N01MPRFYgMF1aX_72lP3n3nzsitiy11",
+   "name": "Spikes Marketing Materials"
+  },
+  {
+   "id": "1a4tXllbJBbU-K03Ob7hde4uoFn_lylHc",
+   "name": "Spikes Marketing Materials"
+  },
+  {
+   "id": "1kq-TErpGDu_KDjctKWcb3VSklnk3F5rm",
+   "name": "Gammatime Ads Creatives (editors)"
+  }
  ]
 }

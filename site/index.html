@@ -62,6 +62,7 @@ th .arr{opacity:.5}
 td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 tr:hover td{background:var(--panel2)}
 td.name{max-width:330px;overflow:hidden;text-overflow:ellipsis}
+.drv{color:var(--accent,#2563eb);text-decoration:none;font-weight:600}.drv:hover{text-decoration:underline}
 .thumb{width:38px;height:52px;border-radius:6px;object-fit:cover;background:var(--line);display:block}
 .cr{display:flex;gap:10px;align-items:center}
 .cr .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:280px}
@@ -321,7 +322,7 @@ const MET = [
 ];
 function cols(){
   if (state.tab === "creatives") return [
-    ["creative","Creative",t=>t.meta.creative,(v,t)=>`<div class="cr">${t.meta.thumb?`<img class="thumb" loading="lazy" src="${esc(t.meta.thumb)}" data-big="${esc(t.meta.thumb)}" alt="">`:`<div class="thumb"></div>`}<div><div class="t" title="${esc(v)}">${esc(v)}</div><div class="s">${esc(t.meta.series)} · ${t.nAds} ad${t.nAds>1?"s":""} · ${t.camps.size} campaign${t.camps.size>1?"s":""}</div></div></div>`,1],
+    ["creative","Creative",t=>t.meta.creative,(v,t)=>`<div class="cr">${t.meta.thumb?`<img class="thumb" loading="lazy" src="${esc(t.meta.thumb)}" data-big="${esc(t.meta.thumb)}" alt="">`:`<div class="thumb"></div>`}<div><div class="t" title="${esc(v)}">${esc(v)}</div><div class="s">${esc(t.meta.series)} · ${t.nAds} ad${t.nAds>1?"s":""} · ${t.camps.size} campaign${t.camps.size>1?"s":""}${t.meta.drive?` · <a class="drv" href="https://drive.google.com/file/d/${esc(t.meta.drive)}/view" target="_blank" rel="noopener">Drive ↗</a>`:""}</div></div></div>`,1],
     ["editor","Editor",t=>t.meta.editor,v=>`<span class="ed">${esc(v)}</span>`,1],
     ["format","Format",t=>t.meta.format,v=>esc(v)||'<span class="muted">–</span>',1],
     ["music","Music",t=>t.meta.music,v=>esc(v)||'<span class="muted">–</span>',1],
@@ -397,8 +398,8 @@ function sheetFrom(tab){
   const keep = {tab:state.tab, limit:state.limit}; state.tab = tab; const cs = cols(); const rows = groupRows();
   rows.sort((a, b) => tab === "weekly" ? b._o - a._o : (b.spend - a.spend)); state.tab = keep.tab;
   const plain = (c, t) => { const v = c[2](t); if (c[0] === "wk") return t.wroas.map(fmtR).join(" · "); return typeof v === "number" ? Math.round(v * 100) / 100 : v ?? ""; };
-  const head = cs.map(c => c[1]); if (tab === "creatives") head.splice(1, 0, "Series", "Ads", "Campaigns", "Ratio");
-  const body = rows.map(t => { const r = cs.map(c => plain(c, t)); if (tab === "creatives") r.splice(1, 0, t.meta.series, t.nAds, [...t.camps].join(" | "), t.meta.ratio); return r; });
+  const head = cs.map(c => c[1]); if (tab === "creatives") head.splice(1, 0, "Series", "Ads", "Campaigns", "Ratio", "Drive");
+  const body = rows.map(t => { const r = cs.map(c => plain(c, t)); if (tab === "creatives") r.splice(1, 0, t.meta.series, t.nAds, [...t.camps].join(" | "), t.meta.ratio, t.meta.drive ? "https://drive.google.com/file/d/" + t.meta.drive + "/view" : ""); return r; });
   return XLSX.utils.aoa_to_sheet([head, ...body]);
 }
 function exportXlsx(){

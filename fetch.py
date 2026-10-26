@@ -195,6 +195,54 @@ def ratio_of(key):
     return m.group(1).upper() if m else ""
 
 
+# ---------- Drive links (map built on Kfir by drive_map.py) ----------
+def drive_norm(name):
+    """Same rule as drive_map.py — keep the two in step."""
+    n = name.strip().lower()
+    n = re.sub(r"\.(mp4|mov)$", "", n)
+    n = re.sub(r"^(copy of\s+)+", "", n)
+    n = re.sub(r"(\s*[-–]\s*copy(\s*\d+)?)+$", "", n)
+    n = re.sub(r"\s*\(\d+\)$", "", n)
+    n = re.sub(r"^\d{2}_", "", n)
+    n = n.replace(" x ", "__")
+    return re.sub(r"[^a-z0-9]", "_", n)
+
+
+def load_drive():
+    path, key = os.path.join(ROOT, "drive.enc"), os.environ.get("DRIVE_KEY")
+    if not key or not os.path.exists(path):
+        print("no Drive map, links skipped", file=sys.stderr)
+        return {}
+    d = json.load(open(path))
+    raw = AESGCM(base64.b64decode(key)).decrypt(base64.b64decode(d["iv"]), base64.b64decode(d["ct"]), None)
+    return json.loads(gzip.decompress(raw))
+
+
+def drive_matcher(dmap):
+    """Exact name only, plus the two safe cases from 20.10: Meta cut the name mid-word,
+    or the ad adds only digits (a date/time stamp). Never a looser guess."""
+    import bisect
+    keys = sorted(dmap)
+
+    def match(creative):
+        k = drive_norm(creative)
+        if not k:
+            return ""
+        if k in dmap:
+            return dmap[k]
+        base = re.sub(r"_\d{1,2}_\d{1,2}_\d{4}(_\d{3,4})?$", "", k)  # Pop's _10-14-2026_1607
+        if base != k and base in dmap:
+            return dmap[base]
+        i = bisect.bisect_left(keys, k)
+        hits = []
+        while i < len(keys) and keys[i].startswith(k) and len(hits) < 2:
+            if keys[i][len(k)] != "_":  # cut mid-word, not at a "_" boundary
+                hits.append(keys[i])
+            i += 1
+        return dmap[hits[0]] if len(hits) == 1 and len(k) >= 20 else ""
+    return match
+
+
 def thumbnails(ad_ids):
     out = {}
     ids = list(ad_ids)
@@ -253,17 +301,22 @@ def main():
         print(f"{acc['name']}: {n} rows", file=sys.stderr)
 
     thumbs = thumbnails(ads.keys())
+    match = drive_matcher(load_drive())
+    links = {}
     ad_list = [None] * len(ads)
     for aid, a in ads.items():
         a[6] = thumbs.get(aid, "")
         key = a[1]
-        ad_list[ad_index[aid]] = a + [music_of(key), format_of(key), ratio_of(key)]
+        if key not in links:
+            links[key] = match(key)
+        ad_list[ad_index[aid]] = a + [music_of(key), format_of(key), ratio_of(key), links[key]]
+    print(f"drive links: {sum(1 for v in links.values() if v)} of {len(links)} creatives", file=sys.stderr)
 
     payload = {
         "generated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         "since": since.isoformat(), "until": until.isoformat(),
         "ad_cols": ["name", "creative", "editor", "series", "campaign", "account", "thumb", "id",
-                    "music", "format", "ratio"],
+                    "music", "format", "ratio", "drive"],
         "row_cols": ["day", "ad", "spend", "impr", "clicks", "purch", "value", "p25", "p50", "p75",
                      "p100", "thru", "watch_sum", "plays"],
         "editors": [e["name"] for e in CONFIG["editors"]] + [CONFIG["default_editor"]],
