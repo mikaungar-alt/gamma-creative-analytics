@@ -203,9 +203,10 @@ def drive_norm(name):
     n = re.sub(r"^(copy of\s+)+", "", n)
     n = re.sub(r"(\s*[-–]\s*copy(\s*\d+)?)+$", "", n)
     n = re.sub(r"\s*\(\d+\)$", "", n)
-    n = re.sub(r"^(\d{2}_)+", "", n)  # files carry 00_ in front of the rank: 00_18_BOYFRIEND_... (Mika, 26.10)
     n = n.replace(" x ", "__")
-    return re.sub(r"[^a-z0-9]", "_", n)
+    n = re.sub(r"[^a-z0-9]", "_", n)
+    # rank in front, with _ or a space, sometimes twice: 00_18_BOYFRIEND_..., "19 Fboy_..." (Mika, 26.10)
+    return re.sub(r"^(\d{1,3}_)+", "", n).rstrip("_")
 
 
 def load_drive():
