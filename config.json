@@ -21,6 +21,10 @@
   {
    "name": "Denis",
    "pattern": "^(meta|tt)_\\d"
+  },
+  {
+   "name": "Mikita",
+   "pattern": "(?!)"
   }
  ],
  "default_editor": "Spikes",
