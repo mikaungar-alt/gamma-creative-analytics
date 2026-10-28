@@ -1,315 +1,323 @@
 {
- "accounts": [
-  {
-   "id": "act_3021183524733262",
-   "name": "Gamma IL"
+  "accounts": [
+    {
+      "id": "act_3021183524733262",
+      "name": "Gamma IL"
+    },
+    {
+      "id": "act_1273515517747821",
+      "name": "GammaTime W2A"
+    },
+    {
+      "id": "act_1599069751834641",
+      "name": "GammaTime WEB"
+    }
+  ],
+  "editors": [
+    {
+      "name": "Bogdan",
+      "pattern": "_by(\\b|_|$)|_yb_"
+    },
+    {
+      "name": "Denis",
+      "pattern": "^(meta|tt)_\\d|_dg(\\b|_|$)"
+    },
+    {
+      "name": "Mikita",
+      "pattern": "_tz(\\b|_|$)"
+    }
+  ],
+  "default_editor": "Spikes",
+  "series": [
+    {
+      "title": "Be My Girlfriend, Gossip Queen",
+      "ad_name_patterns": [
+        "girlfriend",
+        "gossip",
+        "gq"
+      ]
+    },
+    {
+      "title": "The Summer I Turned My Sexiest",
+      "ad_name_patterns": [
+        "Sexy_Milfy",
+        "milfy2",
+        "Summer_Her",
+        "summer_her",
+        "Nice_Woman",
+        "summer_tiktok",
+        "milfy",
+        "Summer_4X5",
+        "Summer_9x16"
+      ]
+    },
+    {
+      "title": "Hot Priest",
+      "ad_name_patterns": [
+        "hot_priest",
+        "S0012_Master"
+      ]
+    },
+    {
+      "title": "My Fake Office Fiance",
+      "ad_name_patterns": [
+        "office",
+        "fake_office",
+        "OFFICE",
+        "Fake_Fiance",
+        "fake_fiance"
+      ]
+    },
+    {
+      "title": "The Summer of Him",
+      "ad_name_patterns": [
+        "Summer_of_Him",
+        "him2"
+      ]
+    },
+    {
+      "title": "Leaving Mr. Wrong for Mr. Right",
+      "ad_name_patterns": [
+        "mrwrong",
+        "mr_wrong",
+        "_right_",
+        "mrwrong",
+        "_wrong"
+      ]
+    },
+    {
+      "title": "The Road Between Us",
+      "ad_name_patterns": [
+        "road_between",
+        "RoadBetween"
+      ]
+    },
+    {
+      "title": "The Professor's Secret",
+      "ad_name_patterns": [
+        "professor",
+        "S0013_Master"
+      ]
+    },
+    {
+      "title": "The Miracle on Dream Street",
+      "ad_name_patterns": [
+        "miracle",
+        "dream_street",
+        "Miracle_In_Dream_Street",
+        "Miracle_New"
+      ]
+    },
+    {
+      "title": "The Player",
+      "ad_name_patterns": [
+        "player"
+      ]
+    },
+    {
+      "title": "The Royal Wedding Planner",
+      "ad_name_patterns": [
+        "royal",
+        "wedding_planner",
+        "Royal_Wedding"
+      ]
+    },
+    {
+      "title": "How to Lose an F-Boy",
+      "ad_name_patterns": [
+        "Fboy",
+        "FBOY",
+        "fboy",
+        "F-Boy",
+        "S0014_MASTERS",
+        "seg_",
+        "htlafb"
+      ]
+    },
+    {
+      "title": "Fashionably in Love",
+      "ad_name_patterns": [
+        "Fashionably",
+        "FashionablyInLove"
+      ]
+    },
+    {
+      "title": "Love Amongst The Stars",
+      "ad_name_patterns": [
+        "LoveAmongstTheStars"
+      ]
+    },
+    {
+      "title": "I Hate You, Let's Date",
+      "ad_name_patterns": [
+        "_loopA",
+        "_loopB",
+        "_loopC",
+        "_loopD",
+        "_loopE",
+        "_loopF",
+        "_loopG",
+        "S0015_MASTER",
+        "ihyld",
+        "hate"
+      ]
+    },
+    {
+      "title": "Skating To Him",
+      "ad_name_patterns": [
+        "SkatingToHim",
+        "S0016_MASTER",
+        "skating"
+      ]
+    },
+    {
+      "title": "Accidentally Engaged",
+      "ad_name_patterns": [
+        "WETM",
+        "engaged",
+        "kbitfl",
+        "accident"
+      ]
+    },
+    {
+      "title": "Lemonade Stand Romance",
+      "ad_name_patterns": [
+        "hook04_permit",
+        "hook05_apology"
+      ]
+    },
+    {
+      "title": "Stolen to Save Her",
+      "ad_name_patterns": [
+        "STSH",
+        "stolen"
+      ]
+    },
+    {
+      "title": "Build a Boyfriend",
+      "ad_name_patterns": [
+        "S0018",
+        "boyfriend"
+      ]
+    },
+    {
+      "title": "The European Summer I Turned My Sexiest",
+      "ad_name_patterns": [
+        "european"
+      ]
+    }
+  ],
+  "campaign_series_codes": {
+    "FBOY": "How to Lose an F-Boy",
+    "BOYFRIEND": "Build a Boyfriend",
+    "PROFESSOR": "The Professor's Secret",
+    "WRONG": "Leaving Mr. Wrong for Mr. Right",
+    "SKATING": "Skating To Him",
+    "STOLEN": "Stolen to Save Her",
+    "PRIEST": "Hot Priest",
+    "OFFICE": "My Fake Office Fiance",
+    "HATE": "I Hate You, Let's Date",
+    "ROYAL": "The Royal Wedding Planner",
+    "MIRACLE": "The Miracle on Dream Street",
+    "PLAYER": "The Player",
+    "LEMONADE": "Lemonade Stand Romance",
+    "SEXIEST": "The Summer I Turned My Sexiest",
+    "EUROPEAN": "The European Summer I Turned My Sexiest",
+    "MILFY": "The Summer I Turned My Sexiest",
+    "HIM": "The Summer of Him",
+    "ROAD": "The Road Between Us",
+    "ENGAGED": "Accidentally Engaged",
+    "FASHION": "Fashionably in Love",
+    "STARS": "Love Amongst The Stars",
+    "SUMMER": "The Summer I Turned My Sexiest",
+    "GIRLFRIEND": "Be My Girlfriend, Gossip Queen",
+    "ACCIDENTALLY": "Accidentally Engaged",
+    "EUROPEAN": "The European Summer I Turned My Sexiest"
   },
-  {
-   "id": "act_1273515517747821",
-   "name": "GammaTime W2A"
-  },
-  {
-   "id": "act_1599069751834641",
-   "name": "GammaTime WEB"
+  "campaign_geos": [
+    "US",
+    "ROW",
+    "WW",
+    "IL",
+    "UK",
+    "CA",
+    "AU",
+    "EU"
+  ],
+  "campaign_codes_not_series": [
+    "ROMANCE",
+    "TEST",
+    "ALL",
+    "APP",
+    "INSTALLS",
+    "DUMMY",
+    "BRAND"
+  ],
+  "drive_folders": [
+    {
+      "id": "11N01MPRFYgMF1aX_72lP3n3nzsitiy11",
+      "name": "Spikes Marketing Materials"
+    },
+    {
+      "id": "1a4tXllbJBbU-K03Ob7hde4uoFn_lylHc",
+      "name": "Spikes Marketing Materials"
+    },
+    {
+      "id": "1kq-TErpGDu_KDjctKWcb3VSklnk3F5rm",
+      "name": "Gammatime Ads Creatives (editors)"
+    }
+  ],
+  "drive_renamed_files": {
+    "_note": "one-off: Meta ad name -> Drive file name, for files renamed after upload (Mika, 26.10)",
+    "14_HTLAFB_01_BY": "14_FBOY_01_BY",
+    "14_HTLAFB_02_BY": "14_FBOY_02_BY",
+    "14_HTLAFB_03_BY": "14_FBOY_03_BY",
+    "14_HTLAFB_04_BY": "14_FBOY_04_BY",
+    "14_HTLAFB_05_BY": "14_FBOY_05_BY",
+    "14_HTLAFB_06_BY": "14_FBOY_06_BY",
+    "14_HTLAFB_07_BY": "14_FBOY_07_BY",
+    "14_HTLAFB_08_BY": "14_FBOY_08_BY",
+    "14_HTLAFB_09_BY": "14_FBOY_09_BY",
+    "14_HTLAFB_10_BY": "14_FBOY_10_BY",
+    "14_HTLAFB_11_BY": "14_FBOY_11_BY",
+    "14_HTLAFB_12_BY": "14_FBOY_12_BY",
+    "14_HTLAFB_13_BY": "14_FBOY_13_BY",
+    "14_HTLAFB_14_BY": "14_FBOY_14_BY",
+    "14_HTLAFB_15_BY": "14_FBOY_15_BY",
+    "14_HTLAFB_16_BY": "14_FBOY_16_BY",
+    "14_HTLAFB_17_BY": "14_FBOY_17_BY",
+    "14_HTLAFB_18_BY": "14_FBOY_18_BY",
+    "14_HTLAFB_19_BY": "14_FBOY_19_BY",
+    "14_HTLAFB_20_BY": "14_FBOY_20_BY",
+    "14_HTLAFB_21_BY": "14_FBOY_21_BY",
+    "14_HTLAFB_22_BY": "14_FBOY_22_BY",
+    "14_HTLAFB_23_BY": "14_FBOY_23_BY",
+    "14_HTLAFB_24_BY": "14_FBOY_24_BY",
+    "14_HTLAFB_25_BY": "14_FBOY_25_BY",
+    "14_HTLAFB_26_BY": "14_FBOY_26_BY",
+    "14_HTLAFB_27_BY": "14_FBOY_27_BY",
+    "14_HTLAFB_28_BY": "14_FBOY_28_BY",
+    "14_HTLAFB_29_BY": "14_FBOY_29_BY",
+    "14_HTLAFB_30_BY": "14_FBOY_30_BY",
+    "14_HTLAFB_31_BY": "14_FBOY_31_BY",
+    "14_HTLAFB_32_BY": "14_FBOY_32_BY",
+    "14_HTLAFB_33_BY": "14_FBOY_33_BY",
+    "14_HTLAFB_34_BY": "14_FBOY_34_BY",
+    "14_HTLAFB_35_BY": "14_FBOY_35_BY",
+    "14_HTLAFB_36_BY": "14_FBOY_36_BY",
+    "14_HTLAFB_37_BY": "14_FBOY_37_BY",
+    "14_HTLAFB_38_BY": "14_FBOY_38_BY",
+    "14_HTLAFB_39_BY": "14_FBOY_39_BY",
+    "14_HTLAFB_40_BY": "14_FBOY_40_BY",
+    "14_HTLAFB_41_BY": "14_FBOY_41_BY",
+    "14_HTLAFB_42_BY": "14_FBOY_42_BY",
+    "14_HTLAFB_43_BY": "14_FBOY_43_BY",
+    "14_HTLAFB_44_BY": "14_FBOY_44_BY",
+    "14_HTLAFB_45_BY": "14_FBOY_45_BY",
+    "14_HTLAFB_46_BY": "14_FBOY_46_BY",
+    "14_HTLAFB_47_BY": "14_FBOY_47_BY",
+    "14_HTLAFB_48_BY": "14_FBOY_48_BY",
+    "14_HTLAFB_49_BY": "14_FBOY_49_BY",
+    "14_HTLAFB_50_BY": "14_FBOY_50_BY"
   }
- ],
- "editors": [
-  {
-   "name": "Bogdan",
-   "pattern": "_by(\\b|_|$)|_yb_"
-  },
-  {
-   "name": "Denis",
-   "pattern": "^(meta|tt)_\\d|_dg(\\b|_|$)"
-  },
-  {
-   "name": "Mikita",
-   "pattern": "_tz(\\b|_|$)"
-  }
- ],
- "default_editor": "Spikes",
- "series": [
-  {
-   "title": "Be My Girlfriend, Gossip Queen",
-   "ad_name_patterns": [
-    "girlfriend",
-    "gossip",
-    "gq"
-   ]
-  },
-  {
-   "title": "The Summer I Turned My Sexiest",
-   "ad_name_patterns": [
-    "Sexy_Milfy",
-    "milfy2",
-    "Summer_Her",
-    "summer_her",
-    "Nice_Woman",
-    "summer_tiktok",
-    "milfy",
-    "Summer_4X5",
-    "Summer_9x16"
-   ]
-  },
-  {
-   "title": "Hot Priest",
-   "ad_name_patterns": [
-    "hot_priest",
-    "S0012_Master"
-   ]
-  },
-  {
-   "title": "My Fake Office Fiance",
-   "ad_name_patterns": [
-    "office",
-    "fake_office",
-    "OFFICE",
-    "Fake_Fiance",
-    "fake_fiance"
-   ]
-  },
-  {
-   "title": "The Summer of Him",
-   "ad_name_patterns": [
-    "Summer_of_Him",
-    "him2"
-   ]
-  },
-  {
-   "title": "Leaving Mr. Wrong for Mr. Right",
-   "ad_name_patterns": [
-    "mrwrong",
-    "mr_wrong",
-    "_right_",
-    "mrwrong",
-    "_wrong"
-   ]
-  },
-  {
-   "title": "The Road Between Us",
-   "ad_name_patterns": [
-    "road_between",
-    "RoadBetween"
-   ]
-  },
-  {
-   "title": "The Professor's Secret",
-   "ad_name_patterns": [
-    "professor",
-    "S0013_Master"
-   ]
-  },
-  {
-   "title": "The Miracle on Dream Street",
-   "ad_name_patterns": [
-    "miracle",
-    "dream_street",
-    "Miracle_In_Dream_Street",
-    "Miracle_New"
-   ]
-  },
-  {
-   "title": "The Player",
-   "ad_name_patterns": [
-    "player"
-   ]
-  },
-  {
-   "title": "The Royal Wedding Planner",
-   "ad_name_patterns": [
-    "royal",
-    "wedding_planner",
-    "Royal_Wedding"
-   ]
-  },
-  {
-   "title": "How to Lose an F-Boy",
-   "ad_name_patterns": [
-    "Fboy",
-    "FBOY",
-    "fboy",
-    "F-Boy",
-    "S0014_MASTERS",
-    "seg_",
-    "htlafb"
-   ]
-  },
-  {
-   "title": "Fashionably in Love",
-   "ad_name_patterns": [
-    "Fashionably",
-    "FashionablyInLove"
-   ]
-  },
-  {
-   "title": "Love Amongst The Stars",
-   "ad_name_patterns": [
-    "LoveAmongstTheStars"
-   ]
-  },
-  {
-   "title": "I Hate You, Let's Date",
-   "ad_name_patterns": [
-    "_loopA",
-    "_loopB",
-    "_loopC",
-    "_loopD",
-    "_loopE",
-    "_loopF",
-    "_loopG",
-    "S0015_MASTER",
-    "ihyld",
-    "hate"
-   ]
-  },
-  {
-   "title": "Skating To Him",
-   "ad_name_patterns": [
-    "SkatingToHim",
-    "S0016_MASTER",
-    "skating"
-   ]
-  },
-  {
-   "title": "Accidentally Engaged",
-   "ad_name_patterns": [
-    "WETM",
-    "engaged",
-    "kbitfl",
-    "accident"
-   ]
-  },
-  {
-   "title": "Lemonade Stand Romance",
-   "ad_name_patterns": [
-    "hook04_permit",
-    "hook05_apology"
-   ]
-  },
-  {
-   "title": "Stolen to Save Her",
-   "ad_name_patterns": [
-    "STSH",
-    "stolen"
-   ]
-  },
-  {
-   "title": "Build a Boyfriend",
-   "ad_name_patterns": [
-    "S0018",
-    "boyfriend"
-   ]
-  }
- ],
- "campaign_series_codes": {
-  "FBOY": "How to Lose an F-Boy",
-  "BOYFRIEND": "Build a Boyfriend",
-  "PROFESSOR": "The Professor's Secret",
-  "WRONG": "Leaving Mr. Wrong for Mr. Right",
-  "SKATING": "Skating To Him",
-  "STOLEN": "Stolen to Save Her",
-  "PRIEST": "Hot Priest",
-  "OFFICE": "My Fake Office Fiance",
-  "HATE": "I Hate You, Let's Date",
-  "ROYAL": "The Royal Wedding Planner",
-  "MIRACLE": "The Miracle on Dream Street",
-  "PLAYER": "The Player",
-  "LEMONADE": "Lemonade Stand Romance",
-  "SEXIEST": "The Summer I Turned My Sexiest",
-  "MILFY": "The Summer I Turned My Sexiest",
-  "HIM": "The Summer of Him",
-  "ROAD": "The Road Between Us",
-  "ENGAGED": "Accidentally Engaged",
-  "FASHION": "Fashionably in Love",
-  "STARS": "Love Amongst The Stars",
-  "SUMMER": "The Summer I Turned My Sexiest",
-  "GIRLFRIEND": "Be My Girlfriend, Gossip Queen",
-  "ACCIDENTALLY": "Accidentally Engaged"
- },
- "campaign_geos": [
-  "US",
-  "ROW",
-  "WW",
-  "IL",
-  "UK",
-  "CA",
-  "AU",
-  "EU"
- ],
- "campaign_codes_not_series": [
-  "ROMANCE",
-  "TEST",
-  "ALL",
-  "APP",
-  "INSTALLS",
-  "DUMMY",
-  "BRAND"
- ],
- "drive_folders": [
-  {
-   "id": "11N01MPRFYgMF1aX_72lP3n3nzsitiy11",
-   "name": "Spikes Marketing Materials"
-  },
-  {
-   "id": "1a4tXllbJBbU-K03Ob7hde4uoFn_lylHc",
-   "name": "Spikes Marketing Materials"
-  },
-  {
-   "id": "1kq-TErpGDu_KDjctKWcb3VSklnk3F5rm",
-   "name": "Gammatime Ads Creatives (editors)"
-  }
- ],
- "drive_renamed_files": {
-  "_note": "one-off: Meta ad name -> Drive file name, for files renamed after upload (Mika, 26.10)",
-  "14_HTLAFB_01_BY": "14_FBOY_01_BY",
-  "14_HTLAFB_02_BY": "14_FBOY_02_BY",
-  "14_HTLAFB_03_BY": "14_FBOY_03_BY",
-  "14_HTLAFB_04_BY": "14_FBOY_04_BY",
-  "14_HTLAFB_05_BY": "14_FBOY_05_BY",
-  "14_HTLAFB_06_BY": "14_FBOY_06_BY",
-  "14_HTLAFB_07_BY": "14_FBOY_07_BY",
-  "14_HTLAFB_08_BY": "14_FBOY_08_BY",
-  "14_HTLAFB_09_BY": "14_FBOY_09_BY",
-  "14_HTLAFB_10_BY": "14_FBOY_10_BY",
-  "14_HTLAFB_11_BY": "14_FBOY_11_BY",
-  "14_HTLAFB_12_BY": "14_FBOY_12_BY",
-  "14_HTLAFB_13_BY": "14_FBOY_13_BY",
-  "14_HTLAFB_14_BY": "14_FBOY_14_BY",
-  "14_HTLAFB_15_BY": "14_FBOY_15_BY",
-  "14_HTLAFB_16_BY": "14_FBOY_16_BY",
-  "14_HTLAFB_17_BY": "14_FBOY_17_BY",
-  "14_HTLAFB_18_BY": "14_FBOY_18_BY",
-  "14_HTLAFB_19_BY": "14_FBOY_19_BY",
-  "14_HTLAFB_20_BY": "14_FBOY_20_BY",
-  "14_HTLAFB_21_BY": "14_FBOY_21_BY",
-  "14_HTLAFB_22_BY": "14_FBOY_22_BY",
-  "14_HTLAFB_23_BY": "14_FBOY_23_BY",
-  "14_HTLAFB_24_BY": "14_FBOY_24_BY",
-  "14_HTLAFB_25_BY": "14_FBOY_25_BY",
-  "14_HTLAFB_26_BY": "14_FBOY_26_BY",
-  "14_HTLAFB_27_BY": "14_FBOY_27_BY",
-  "14_HTLAFB_28_BY": "14_FBOY_28_BY",
-  "14_HTLAFB_29_BY": "14_FBOY_29_BY",
-  "14_HTLAFB_30_BY": "14_FBOY_30_BY",
-  "14_HTLAFB_31_BY": "14_FBOY_31_BY",
-  "14_HTLAFB_32_BY": "14_FBOY_32_BY",
-  "14_HTLAFB_33_BY": "14_FBOY_33_BY",
-  "14_HTLAFB_34_BY": "14_FBOY_34_BY",
-  "14_HTLAFB_35_BY": "14_FBOY_35_BY",
-  "14_HTLAFB_36_BY": "14_FBOY_36_BY",
-  "14_HTLAFB_37_BY": "14_FBOY_37_BY",
-  "14_HTLAFB_38_BY": "14_FBOY_38_BY",
-  "14_HTLAFB_39_BY": "14_FBOY_39_BY",
-  "14_HTLAFB_40_BY": "14_FBOY_40_BY",
-  "14_HTLAFB_41_BY": "14_FBOY_41_BY",
-  "14_HTLAFB_42_BY": "14_FBOY_42_BY",
-  "14_HTLAFB_43_BY": "14_FBOY_43_BY",
-  "14_HTLAFB_44_BY": "14_FBOY_44_BY",
-  "14_HTLAFB_45_BY": "14_FBOY_45_BY",
-  "14_HTLAFB_46_BY": "14_FBOY_46_BY",
-  "14_HTLAFB_47_BY": "14_FBOY_47_BY",
-  "14_HTLAFB_48_BY": "14_FBOY_48_BY",
-  "14_HTLAFB_49_BY": "14_FBOY_49_BY",
-  "14_HTLAFB_50_BY": "14_FBOY_50_BY"
- }
 }
