@@ -205,6 +205,18 @@
       "ad_name_patterns": [
         "european"
       ]
+    },
+    {
+      "title": "Me and Mr. Right",
+      "ad_name_patterns": [
+        "mrright"
+      ]
+    },
+    {
+      "title": "What We Do For Love",
+      "ad_name_patterns": [
+        "forlove"
+      ]
     }
   ],
   "campaign_series_codes": {
@@ -232,7 +244,8 @@
     "SUMMER": "The Summer I Turned My Sexiest",
     "GIRLFRIEND": "Be My Girlfriend, Gossip Queen",
     "ACCIDENTALLY": "Accidentally Engaged",
-    "EUROPEAN": "The European Summer I Turned My Sexiest"
+    "MRRIGHT": "Me and Mr. Right",
+    "FORLOVE": "What We Do For Love"
   },
   "campaign_geos": [
     "US",
