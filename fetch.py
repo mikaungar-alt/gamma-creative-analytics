@@ -110,17 +110,17 @@ def insights(account_id, since, until):
 
 
 AUD_FIELDS = "ad_id,ad_name,campaign_name,spend,impressions,inline_link_clicks,actions,action_values"
-AUD_WEEKS = 13  # whole weeks that end on the last data day, so "last 7 / 14 days" are exact weeks
+AUD_WEEKS = 5  # whole weeks ending on the last data day; 13 weeks ran past an hour on 9.11, so 5 (covers "last 30 days")
 
 
-def audience(accounts, until):
+def audience(accounts, until, weeks=AUD_WEEKS):
     """Age x gender per ad from Meta, summed per week x (editor, series, account) x segment.
     Ad level is needed for the editor and series; summing keeps the file small (Mika 9.11).
     Editors here come from the morning pull, so an editor-rule change shows on the next morning."""
-    since = until - dt.timedelta(days=AUD_WEEKS * 7 - 1)
+    since = until - dt.timedelta(days=weeks * 7 - 1)
     groups, gi, segs, si, cells = [], {}, [], {}, {}
     for acc in accounts:
-        for w in range(AUD_WEEKS):
+        for w in range(weeks):
             ws = since + dt.timedelta(days=7 * w)
             we = ws + dt.timedelta(days=6)
             rows = audience_rows(acc["id"], ws.isoformat(), we.isoformat())
@@ -143,7 +143,7 @@ def audience(accounts, until):
         print(f"audience {acc['name']}: done", file=sys.stderr, flush=True)
     out = [[w, g, s, round(c[0], 2), c[1], c[2], c[3], round(c[4], 2)]
            for (w, g, s), c in cells.items() if c[0] or c[3]]
-    return {"aud_since": since.isoformat(), "aud_weeks": AUD_WEEKS, "aud_groups": groups, "aud_segs": segs,
+    return {"aud_since": since.isoformat(), "aud_weeks": weeks, "aud_groups": groups, "aud_segs": segs,
             "aud_cols": ["week", "group", "seg", "spend", "impr", "clicks", "purch", "value"], "aud": out}
 
 
@@ -565,6 +565,11 @@ def relink():
         payload["blocked_cols"] = BLOCKED_COLS
         payload["blocked_since"] = CONFIG.get("blocked_since", "2026-11-09")
         payload["blocked"] = blocked_ads({a[cols.index("id")] for a in payload["ads"]})
+        if "aud" not in payload:  # no age/gender yet: the last two weeks, a few minutes (the morning pull brings the full set)
+            try:
+                payload.update(audience(CONFIG["accounts"], dt.date.fromisoformat(payload["until"]), 2))
+            except Exception as e:
+                print(f"audience skipped: {e}", file=sys.stderr)
     raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
     iv = os.urandom(12)
     ct = AESGCM(key).encrypt(iv, raw, None)
