@@ -109,6 +109,68 @@ def insights(account_id, since, until):
             insights(account_id, (mid + dt.timedelta(days=1)).isoformat(), until))
 
 
+AUD_FIELDS = "ad_id,ad_name,campaign_name,spend,impressions,inline_link_clicks,actions,action_values"
+AUD_WEEKS = 13  # whole weeks that end on the last data day, so "last 7 / 14 days" are exact weeks
+
+
+def audience(accounts, until):
+    """Age x gender per ad from Meta, summed per week x (editor, series, account) x segment.
+    Ad level is needed for the editor and series; summing keeps the file small (Mika 9.11).
+    Editors here come from the morning pull, so an editor-rule change shows on the next morning."""
+    since = until - dt.timedelta(days=AUD_WEEKS * 7 - 1)
+    groups, gi, segs, si, cells = [], {}, [], {}, {}
+    for acc in accounts:
+        for w in range(AUD_WEEKS):
+            ws = since + dt.timedelta(days=7 * w)
+            we = ws + dt.timedelta(days=6)
+            rows = audience_rows(acc["id"], ws.isoformat(), we.isoformat())
+            for r in rows:
+                key = creative_key(r.get("ad_name", ""))
+                g = (editor_of(key), series_of(key, r.get("campaign_name", "")), acc["name"])
+                if g not in gi:
+                    gi[g] = len(groups)
+                    groups.append(list(g))
+                s = f"{r.get('gender', 'unknown')}|{r.get('age', 'Unknown')}"
+                if s not in si:
+                    si[s] = len(segs)
+                    segs.append(s)
+                c = cells.setdefault((w, gi[g], si[s]), [0.0, 0, 0, 0.0, 0.0])
+                c[0] += float(r.get("spend") or 0)
+                c[1] += int(r.get("impressions") or 0)
+                c[2] += int(r.get("inline_link_clicks") or 0)
+                c[3] += act(r.get("actions"))
+                c[4] += act(r.get("action_values"))
+        print(f"audience {acc['name']}: done", file=sys.stderr, flush=True)
+    out = [[w, g, s, round(c[0], 2), c[1], c[2], c[3], round(c[4], 2)]
+           for (w, g, s), c in cells.items() if c[0] or c[3]]
+    return {"aud_since": since.isoformat(), "aud_weeks": AUD_WEEKS, "aud_groups": groups, "aud_segs": segs,
+            "aud_cols": ["week", "group", "seg", "spend", "impr", "clicks", "purch", "value"], "aud": out}
+
+
+def audience_rows(account_id, since, until):
+    for attempt in range(3):
+        try:
+            job = get(f"{API}/{account_id}/insights", {
+                "level": "ad", "fields": AUD_FIELDS, "breakdowns": "age,gender",
+                "time_range": json.dumps({"since": since, "until": until}),
+                "filtering": json.dumps([{"field": "impressions", "operator": "GREATER_THAN", "value": 0}]),
+                "action_attribution_windows": json.dumps(["7d_click", "1d_view"]),
+            }, method="POST")
+            rid = job["report_run_id"]
+            while True:
+                st = get(f"{API}/{rid}", {"fields": "async_status,async_percent_completion"})
+                if st["async_status"] == "Job Completed":
+                    break
+                if st["async_status"] in ("Job Failed", "Job Skipped"):
+                    raise ReportFailed(f"audience {rid} {st['async_status']}")
+                time.sleep(5)
+            return list(paged(f"{API}/{rid}/insights", {"limit": 2000}))
+        except ReportFailed as e:
+            print(f"  {e} {account_id} {since}; retry {attempt + 1}/3", file=sys.stderr, flush=True)
+            time.sleep(30 * (attempt + 1))
+    raise ReportFailed(f"audience {account_id} {since}..{until} keeps failing")
+
+
 def act(lst, kind="purchase"):
     for a in lst or []:
         if a.get("action_type") == kind:
@@ -461,6 +523,10 @@ def main():
         "blocked_cols": BLOCKED_COLS, "blocked": blocked_ads(set(ads.keys())),
         "blocked_since": CONFIG.get("blocked_since", "2026-11-09"),
     }
+    try:  # the Audience tab is extra: if Meta fails on it, the rest of the page still updates
+        payload.update(audience(accounts, until))
+    except Exception as e:
+        print(f"audience skipped: {e}", file=sys.stderr)
     raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
     salt, iv = os.urandom(16), os.urandom(12)
     key = PBKDF2HMAC(hashes.SHA256(), 32, salt, 250000).derive(PASSWORD.encode())

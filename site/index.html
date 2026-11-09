@@ -57,6 +57,8 @@ tr.go{cursor:pointer}
 .tab.on{color:var(--text);border-bottom-color:var(--accent)}
 .toolbar{display:flex;gap:10px;align-items:center;padding:12px 14px;flex-wrap:wrap}
 .tablewrap{overflow:auto;max-height:72vh}
+#aud h3{margin:18px 14px 6px;font-size:14px}#aud .sub2{margin:0 14px 8px;color:var(--muted);font-size:12px}
+#aud .tablewrap{max-height:none}#aud td.thin{opacity:.4}#aud .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.55;margin-left:6px;vertical-align:middle}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
 th{position:sticky;top:0;background:var(--panel2);text-align:right;font-weight:600;color:var(--muted);font-size:11.5px;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;z-index:1}
 th.l,td.l{text-align:left}
@@ -126,10 +128,12 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
       <input type="search" id="q" placeholder="Search creative name…" style="flex:1;min-width:180px;max-width:360px">
       <label class="check" id="dimwrap" hidden>Break down by <select id="dim"></select></label>
       <label class="check" id="testedwrap"><input type="checkbox" id="tested" checked> Tested only (spend ≥ $15)</label>
+      <label class="check" id="audwrap" hidden>Show <select id="audm"></select></label>
       <label class="check" id="neverwrap" hidden><input type="checkbox" id="never"> Hide ads that never ran</label>
       <span class="spacer"></span><span class="muted" id="count"></span>
     </div>
-    <div class="tablewrap"><table id="tbl"></table></div>
+    <div class="tablewrap" id="tblwrap"><table id="tbl"></table></div>
+    <div id="aud" hidden></div>
     <div class="more" id="morewrap" hidden><button class="btn" id="more">Show more</button></div>
     <div class="note" id="note"></div>
   </section>
@@ -261,7 +265,9 @@ function buildFilters(){
   $("#q").oninput = e => { state.q = e.target.value.toLowerCase(); state.limit = 150; renderTable(); };
   $("#tested").onchange = e => { state.tested = e.target.checked; renderTable(); };
   $("#never").onchange = e => { state.hideNever = e.target.checked; renderTable(); };
-  const tabs = [["creatives","Creatives"],["blocked","Blocked"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["campaigns","Campaigns"]];
+  $("#audm").innerHTML = AUDM.map(([k, l]) => `<option value="${k}">${l}</option>`).join(""); state.audm = "roas";
+  $("#audm").onchange = e => { state.audm = e.target.value; renderTable(); };
+  const tabs = [["creatives","Creatives"],["blocked","Blocked"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["audience","Audience"],["campaigns","Campaigns"]];
   $("#tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab" data-t="${k}">${l}</button>`).join("");
   $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = b.dataset.t === "blocked" ? {key:"date", dir:-1} : {key:"spend", dir:-1}; state.limit = 150; render(); };
   $("#more").onclick = () => { state.limit += 300; renderTable(); };
@@ -445,6 +451,8 @@ function weekly(){
   return out;
 }
 function renderTable(){
+  const au = state.tab === "audience"; $("#tblwrap").hidden = au; $("#aud").hidden = !au; $("#audwrap").hidden = !au; $("#q").hidden = au;
+  if (au) { $("#testedwrap").hidden = $("#neverwrap").hidden = $("#dimwrap").hidden = $("#morewrap").hidden = true; return renderAudience(); }
   $("#dimwrap").hidden = state.tab !== "naming";
   $("#neverwrap").hidden = state.tab !== "blocked"; $("#testedwrap").hidden = state.tab === "blocked";
   const cs = cols(); let rows = groupRows();
@@ -468,6 +476,81 @@ function renderTable(){
     : state.tab === "series" ? "Totals for the creatives that match the current filters. Click a series to see its creatives."
     : state.tab === "naming" ? "Reads the editors' naming convention from the file name: SERIES_EDITOR_BATCH_AD_duration_edit_inserts_graphics_cta_voiceover_mx###. Files with an editor code count as the new naming even if a code is not in the dictionary yet (shown as “Not in dictionary: …”) or a field is missing. Files with no editor code show as “Named before the convention”."
     : "Totals for the creatives that match the current filters.";
+}
+
+// ---------- audience: age x gender from Meta, per editor and per series (Mika 9.11) ----------
+// fetch.py sums Meta's age/gender breakdown per week x (editor, series, account); weeks end on the last data day
+const AGES = ["18-24","25-34","35-44","45-54","55-64","65+"];
+const AUDM = [["roas","ROAS"],["purch","Purchases"],["share","Share of purchases"],["cpa","Cost / purchase"],["spshare","Share of spend"],["cpp","Clicks per purchase"]];
+const AUD_MIN = 5; // cells with fewer purchases are shown faded: too few to read
+function audWeeks(){
+  if (!D.aud) return [];
+  const base = new Date(D.aud_since + "T00:00:00Z"), out = [];
+  for (let w = 0; w < D.aud_weeks; w++) { const s = new Date(base); s.setUTCDate(s.getUTCDate() + 7 * w); const e = new Date(s); e.setUTCDate(e.getUTCDate() + 6);
+    // a week counts when at least 4 of its 7 days are inside the chosen period
+    const lo = Math.max(+s, +new Date(state.from + "T00:00:00Z")), hi = Math.min(+e, +new Date(state.to + "T00:00:00Z"));
+    if ((hi - lo) / 864e5 + 1 >= 4) out.push({w, s:iso(s), e:iso(e)}); }
+  return out;
+}
+const segOf = s => { const [g, a] = s.split("|"); return {g: g === "female" ? "Women" : g === "male" ? "Men" : "Unknown", a: AGES.includes(a) ? a : "Unknown"}; };
+function audAgg(useEdSer){
+  const ws = new Set(audWeeks().map(x => x.w)), G = D.aud_groups, S = D.aud_segs.map(segOf), out = [];
+  for (const r of D.aud) { if (!ws.has(r[0])) continue; const [ed, ser, acc] = G[r[1]];
+    if (state.account !== "All" && acc !== state.account) continue;
+    if (useEdSer && ((state.editor !== "All" && ed !== state.editor) || (state.series !== "All" && ser !== state.series))) continue;
+    out.push({ed, ser, acc, ...S[r[2]], spend:r[3], impr:r[4], clicks:r[5], purch:r[6], value:r[7]}); }
+  return out;
+}
+const audBlank = () => ({spend:0, impr:0, clicks:0, purch:0, value:0});
+function audAdd(x, r){ x.spend += r.spend; x.impr += r.impr; x.clicks += r.clicks; x.purch += r.purch; x.value += r.value; return x; }
+function audVal(x, m, tot){
+  return m === "roas" ? div(x.value, x.spend) : m === "purch" ? x.purch : m === "cpa" ? div(x.spend, x.purch)
+    : m === "share" ? div(x.purch * 100, tot.purch) : m === "spshare" ? div(x.spend * 100, tot.spend) : div(x.clicks, x.purch);
+}
+const audFmt = (m, v) => m === "roas" ? fmtR(v) : m === "purch" ? fmtN(v) : m === "cpa" ? fmt$(v) : m === "cpp" ? fmtN(v) : fmtP(v);
+function audSummary(rows, keyFn, title, sub){
+  const g = new Map(), tot = audBlank(); for (const r of rows) { const k = keyFn(r); if (!g.has(k)) g.set(k, Object.assign(audBlank(), {k})); audAdd(g.get(k), r); audAdd(tot, r); }
+  const order = [...AGES, "Women", "Men", "Unknown"], list = [...g.values()].sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k));
+  const maxSp = Math.max(...list.map(x => x.spend), 1);
+  const body = list.map(x => `<tr><td class="l">${esc(x.k)}</td><td>${fmt$(x.spend)}<span class="bar" style="width:${Math.round(x.spend / maxSp * 60)}px"></span></td><td>${fmtP(div(x.spend * 100, tot.spend))}</td>
+    <td>${fmtN(x.purch)}</td><td>${fmtP(div(x.purch * 100, tot.purch))}</td><td><span class="${roasCls(div(x.value, x.spend))}">${fmtR(div(x.value, x.spend))}</span></td><td>${fmt$(div(x.spend, x.purch))}</td>
+    <td>${fmtN(x.clicks)}</td><td>${fmtP(div(x.clicks * 100, tot.clicks))}</td><td>${fmtP(div(x.purch * 100, x.clicks))}</td><td>${fmtN(div(x.clicks, x.purch))}</td></tr>`).join("");
+  return `<h3>${title}</h3><div class="sub2">${sub}</div><div class="tablewrap"><table><thead><tr><th class="l"></th><th>Spend</th><th>Share of spend</th><th>Purchases</th><th>Share of purchases</th><th>ROAS</th><th>Cost / purchase</th><th>Link clicks</th><th>Share of clicks</th><th>Click → purchase</th><th>Clicks per purchase</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function audMatrix(rows, keyFn, title, sub){
+  const m = state.audm, cols = ["Women", "Men", ...AGES], g = new Map();
+  for (const r of rows) { const k = keyFn(r); if (!g.has(k)) g.set(k, {k, all:audBlank(), c:Object.fromEntries(cols.map(c => [c, audBlank()]))});
+    const x = g.get(k); audAdd(x.all, r); if (x.c[r.g]) audAdd(x.c[r.g], r); if (x.c[r.a]) audAdd(x.c[r.a], r); }
+  const list = [...g.values()].filter(x => x.all.spend >= 15).sort((a, b) => b.all.spend - a.all.spend);
+  const cell = (x, tot) => { const v = audVal(x, m, tot); const cls = x.purch < AUD_MIN ? "thin" : "";
+    return `<td class="${cls}" title="${fmtN(x.purch)} purchases · ${fmt$(x.spend)} spend">${m === "roas" ? `<span class="${roasCls(v)}">${fmtR(v)}</span>` : audFmt(m, v)}</td>`; };
+  const body = list.map(x => `<tr><td class="l">${esc(x.k)}</td><td>${fmt$(x.all.spend)}</td><td>${fmtN(x.all.purch)}</td><td>${fmtR(div(x.all.value, x.all.spend))}</td>${cols.map(c => cell(x.c[c], x.all)).join("")}</tr>`).join("")
+    || `<tr><td class="l muted" colspan="${cols.length + 4}" style="padding:20px">Nothing matches these filters.</td></tr>`;
+  return `<h3>${title}</h3><div class="sub2">${sub}</div><div class="tablewrap"><table><thead><tr><th class="l"></th><th>Spend</th><th>Purchases</th><th>ROAS</th>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function renderAudience(){
+  const note = $("#note");
+  if (!D.aud) { $("#aud").innerHTML = `<div class="note" style="padding:30px">The age and gender data arrives with the next morning update.</div>`; note.textContent = ""; $("#count").textContent = ""; return; }
+  const ws = audWeeks(), acc = state.account === "All" ? "all accounts" : state.account;
+  const wtxt = ws.length ? `${ws[0].s.slice(5)} → ${ws[ws.length - 1].e.slice(5)}` : "no full week in this period";
+  const whole = audAgg(false), sel = audAgg(true), mLabel = AUDM.find(x => x[0] === state.audm)[1];
+  const scope = [state.editor !== "All" ? state.editor : "", state.series !== "All" ? state.series : ""].filter(Boolean).join(" · ") || "all editors and series";
+  $("#aud").innerHTML =
+    audSummary(whole, r => r.g, "Account · by gender", `Every ad in ${esc(acc)}, ${wtxt}. Editor and series filters do not apply here.`) +
+    audSummary(whole, r => r.a, "Account · by age", `Every ad in ${esc(acc)}, ${wtxt}.`) +
+    audMatrix(sel, r => r.ed, `By editor · ${mLabel}`, `${esc(scope)}, ${wtxt}. Each cell is the editor's ${mLabel.toLowerCase()} in that gender or age group. Faded: fewer than ${AUD_MIN} purchases.`) +
+    audMatrix(sel, r => r.ser, `By series · ${mLabel}`, `${esc(scope)}, ${wtxt}. Series with at least $15 spend. Faded: fewer than ${AUD_MIN} purchases.`);
+  $("#count").textContent = "";
+  note.textContent = `Meta's own age and gender breakdown, 7-day click / 1-day view, the same purchases as the rest of the page. Counted in whole weeks that end on the last data day, so the period snaps to weeks: a week counts when at least 4 of its days are inside the dates you chose. Downloads are not included.`;
+}
+function audienceSheet(){
+  const out = [["Section","Group","Gender","Age","Spend","Purchases","Purchase value","ROAS","Cost / purchase","Link clicks","Clicks per purchase"]];
+  if (!D.aud) return XLSX.utils.aoa_to_sheet(out);
+  const push = (sec, rows, keyFn) => { const g = new Map(); for (const r of rows) { const k = keyFn(r) + "\u0000" + r.g + "\u0000" + r.a; if (!g.has(k)) g.set(k, Object.assign(audBlank(), {k:keyFn(r), g:r.g, a:r.a})); audAdd(g.get(k), r); }
+    for (const x of [...g.values()].sort((a, b) => b.spend - a.spend)) out.push([sec, x.k, x.g, x.a, +x.spend.toFixed(2), x.purch, +x.value.toFixed(2), +(div(x.value, x.spend) || 0).toFixed(2), x.purch ? +(x.spend / x.purch).toFixed(2) : "", x.clicks, x.purch ? Math.round(x.clicks / x.purch) : ""]); };
+  push("Account", audAgg(false), r => state.account === "All" ? "All accounts" : state.account);
+  const sel = audAgg(true); push("Editor", sel, r => r.ed); push("Series", sel, r => r.ser);
+  return XLSX.utils.aoa_to_sheet(out);
 }
 
 // thumbnail preview on hover
@@ -510,6 +593,7 @@ function exportXlsx(){
   for (const [k, n] of [["creatives","Creatives"],["series","By Series"],["weekly","Weekly"],["music","Music"],["format","Format"],["campaigns","Campaigns"]]) XLSX.utils.book_append_sheet(wb, sheetFrom(k), n);
   XLSX.utils.book_append_sheet(wb, namingSheet(), "Naming");
   XLSX.utils.book_append_sheet(wb, blockedSheet(), "Blocked");
+  XLSX.utils.book_append_sheet(wb, audienceSheet(), "Audience");
   const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor}${state.series === "All" ? "" : " - " + state.series.replace(/[\\/:*?"<>|]/g, "")} - ${state.from} to ${state.to}.xlsx`;
   XLSX.writeFile(wb, name);
 }
