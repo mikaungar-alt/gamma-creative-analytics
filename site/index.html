@@ -58,7 +58,23 @@ tr.go{cursor:pointer}
 .toolbar{display:flex;gap:10px;align-items:center;padding:12px 14px;flex-wrap:wrap}
 .tablewrap{overflow:auto;max-height:72vh}
 #aud h3{margin:18px 14px 6px;font-size:14px}#aud .sub2{margin:0 14px 8px;color:var(--muted);font-size:12px}
-#aud .tablewrap{max-height:none}#aud td.thin{opacity:.4}#aud .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.55;margin-left:6px;vertical-align:middle}
+#aud .tablewrap{max-height:none}
+#aud .acards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px}#aud .acards .card{padding:14px 16px}
+#aud .acards .l{color:var(--muted);font-size:12px;font-weight:600}#aud .acards .v{font-size:20px;font-weight:700;margin:4px 0}#aud .acards .c{color:var(--muted);font-size:12px}
+#aud .pyr{display:grid;grid-template-columns:1fr 64px 1fr;gap:6px 0;align-items:center;margin:8px 14px 0;max-width:900px}
+#aud .pyr .age{text-align:center;font-weight:600;font-size:12px;color:var(--muted)}#aud .side{display:flex;flex-direction:column;gap:3px}#aud .side.l{align-items:flex-end;padding-left:44px}#aud .side.r{padding-right:44px}
+#aud .pb{height:11px;border-radius:3px;position:relative}#aud .pb span{position:absolute;top:-2px;font-size:11px;color:var(--muted);white-space:nowrap}
+#aud .side.l .pb span{right:calc(100% + 6px)}#aud .side.r .pb span{left:calc(100% + 6px)}
+#aud .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:12px 14px}#aud .legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+#aud .hdr{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-right:14px}
+#aud .seg{display:inline-flex;background:var(--line);border-radius:9px;padding:3px}#aud .seg button{border:0;background:none;padding:6px 12px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:600;font-size:13px}#aud .seg button.on{background:var(--card,#fff);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#aud table.hm{border-collapse:separate;border-spacing:3px}#aud table.hm td{text-align:center;border-radius:6px;border:0;padding:8px 6px}#aud table.hm td.l{text-align:left;font-weight:600}
+#aud table.hm th{text-align:center}#aud table.hm th.l{text-align:left}#aud table.hm tr[data-ae],#aud table.hm tr[data-as]{cursor:pointer}#aud table.hm tr[data-ae]:hover td.l,#aud table.hm tr[data-as]:hover td.l{color:var(--accent)}
+#aud td.hg{background:rgba(31,157,107,.16);color:#1f9d6b;font-weight:600}#aud td.hb{background:rgba(209,69,59,.14);color:#d1453b;font-weight:600}#aud td.hn{background:rgba(127,137,170,.10)}
+#aud td.thin{background:repeating-linear-gradient(45deg,rgba(127,137,170,.16),rgba(127,137,170,.16) 4px,transparent 4px,transparent 8px);color:var(--muted)}
+#aud tr.avg td{color:var(--muted);font-style:italic;background:none}
+#aud details{margin:10px 14px 14px}#aud summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px}#aud details h3{margin-left:0}#aud details .sub2{margin-left:0}
+@media (max-width:700px){#aud .acards{grid-template-columns:1fr}}#aud .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.55;margin-left:6px;vertical-align:middle}
 table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
 th{position:sticky;top:0;background:var(--panel2);text-align:right;font-weight:600;color:var(--muted);font-size:11.5px;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;z-index:1}
 th.l,td.l{text-align:left}
@@ -128,7 +144,6 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
       <input type="search" id="q" placeholder="Search creative name…" style="flex:1;min-width:180px;max-width:360px">
       <label class="check" id="dimwrap" hidden>Break down by <select id="dim"></select></label>
       <label class="check" id="testedwrap"><input type="checkbox" id="tested" checked> Tested only (spend ≥ $15)</label>
-      <label class="check" id="audwrap" hidden>Show <select id="audm"></select></label>
       <label class="check" id="neverwrap" hidden><input type="checkbox" id="never"> Hide ads that never ran</label>
       <span class="spacer"></span><span class="muted" id="count"></span>
     </div>
@@ -265,8 +280,10 @@ function buildFilters(){
   $("#q").oninput = e => { state.q = e.target.value.toLowerCase(); state.limit = 150; renderTable(); };
   $("#tested").onchange = e => { state.tested = e.target.checked; renderTable(); };
   $("#never").onchange = e => { state.hideNever = e.target.checked; renderTable(); };
-  $("#audm").innerHTML = AUDM.map(([k, l]) => `<option value="${k}">${l}</option>`).join(""); state.audm = "roas";
-  $("#audm").onchange = e => { state.audm = e.target.value; renderTable(); };
+  state.audm = "roas";
+  $("#aud").onclick = e => { const b = e.target.closest("[data-am]"); if (b) { state.audm = b.dataset.am; return renderTable(); }
+    const tr = e.target.closest("tr[data-ae]"); if (tr) { state.editor = tr.dataset.ae; render(); window.scrollTo({top:0, behavior:"smooth"}); return; }
+    const ts = e.target.closest("tr[data-as]"); if (ts) { state.series = ts.dataset.as; render(); window.scrollTo({top:0, behavior:"smooth"}); } };
   const tabs = [["creatives","Creatives"],["blocked","Blocked"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["audience","Audience"],["campaigns","Campaigns"]];
   $("#tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab" data-t="${k}">${l}</button>`).join("");
   $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = b.dataset.t === "blocked" ? {key:"date", dir:-1} : {key:"spend", dir:-1}; state.limit = 150; render(); };
@@ -451,7 +468,7 @@ function weekly(){
   return out;
 }
 function renderTable(){
-  const au = state.tab === "audience"; $("#tblwrap").hidden = au; $("#aud").hidden = !au; $("#audwrap").hidden = !au; $("#q").hidden = au;
+  const au = state.tab === "audience"; $("#tblwrap").hidden = au; $("#aud").hidden = !au; $("#q").hidden = au;
   if (au) { $("#testedwrap").hidden = $("#neverwrap").hidden = $("#dimwrap").hidden = $("#morewrap").hidden = true; return renderAudience(); }
   $("#dimwrap").hidden = state.tab !== "naming";
   $("#neverwrap").hidden = state.tab !== "blocked"; $("#testedwrap").hidden = state.tab === "blocked";
@@ -481,7 +498,6 @@ function renderTable(){
 // ---------- audience: age x gender from Meta, per editor and per series (Mika 9.11) ----------
 // fetch.py sums Meta's age/gender breakdown per week x (editor, series, account); weeks end on the last data day
 const AGES = ["18-24","25-34","35-44","45-54","55-64","65+"];
-const AUDM = [["roas","ROAS"],["purch","Purchases"],["share","Share of purchases"],["cpa","Cost / purchase"],["spshare","Share of spend"],["cpp","Clicks per purchase"]];
 const AUD_MIN = 5; // cells with fewer purchases are shown faded: too few to read
 function audWeeks(){
   if (!D.aud) return [];
@@ -498,16 +514,11 @@ function audAgg(useEdSer){
   for (const r of D.aud) { if (!ws.has(r[0])) continue; const [ed, ser, acc] = G[r[1]];
     if (state.account !== "All" && acc !== state.account) continue;
     if (useEdSer && ((state.editor !== "All" && ed !== state.editor) || (state.series !== "All" && ser !== state.series))) continue;
-    out.push({ed, ser, acc, ...S[r[2]], spend:r[3], impr:r[4], clicks:r[5], purch:r[6], value:r[7]}); }
+    out.push({w:r[0], ed, ser, acc, ...S[r[2]], spend:r[3], impr:r[4], clicks:r[5], purch:r[6], value:r[7]}); }
   return out;
 }
 const audBlank = () => ({spend:0, impr:0, clicks:0, purch:0, value:0});
 function audAdd(x, r){ x.spend += r.spend; x.impr += r.impr; x.clicks += r.clicks; x.purch += r.purch; x.value += r.value; return x; }
-function audVal(x, m, tot){
-  return m === "roas" ? div(x.value, x.spend) : m === "purch" ? x.purch : m === "cpa" ? div(x.spend, x.purch)
-    : m === "share" ? div(x.purch * 100, tot.purch) : m === "spshare" ? div(x.spend * 100, tot.spend) : div(x.clicks, x.purch);
-}
-const audFmt = (m, v) => m === "roas" ? fmtR(v) : m === "purch" ? fmtN(v) : m === "cpa" ? fmt$(v) : m === "cpp" ? fmtN(v) : fmtP(v);
 function audSummary(rows, keyFn, title, sub){
   const g = new Map(), tot = audBlank(); for (const r of rows) { const k = keyFn(r); if (!g.has(k)) g.set(k, Object.assign(audBlank(), {k})); audAdd(g.get(k), r); audAdd(tot, r); }
   const order = [...AGES, "Women", "Men", "Unknown"], list = [...g.values()].sort((a, b) => order.indexOf(a.k) - order.indexOf(b.k));
@@ -517,31 +528,75 @@ function audSummary(rows, keyFn, title, sub){
     <td>${fmtN(x.clicks)}</td><td>${fmtP(div(x.clicks * 100, tot.clicks))}</td><td>${fmtP(div(x.purch * 100, x.clicks))}</td><td>${fmtN(div(x.clicks, x.purch))}</td></tr>`).join("");
   return `<h3>${title}</h3><div class="sub2">${sub}</div><div class="tablewrap"><table><thead><tr><th class="l"></th><th>Spend</th><th>Share of spend</th><th>Purchases</th><th>Share of purchases</th><th>ROAS</th><th>Cost / purchase</th><th>Link clicks</th><th>Share of clicks</th><th>Click → purchase</th><th>Clicks per purchase</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
-function audMatrix(rows, keyFn, title, sub){
-  const m = state.audm, cols = ["Women", "Men", ...AGES], g = new Map();
+const PCOL = {Women:["#f3c3d8","#d64f8a"], Men:["#bcd0ff","#2f6bff"]};
+const pctS = v => v == null ? "–" : (v * 100).toFixed(v < .1 ? 1 : 0) + "%";
+function segTotals(rows){ // age x gender cells, plus totals
+  const m = new Map(), tot = audBlank();
+  for (const r of rows) { const k = r.g + "|" + r.a; if (!m.has(k)) m.set(k, Object.assign(audBlank(), {g:r.g, a:r.a})); audAdd(m.get(k), r); audAdd(tot, r); }
+  return {m, tot};
+}
+function audCards(rows){
+  const {m, tot} = segTotals(rows), cells = [...m.values()].filter(x => x.g !== "Unknown" && x.a !== "Unknown" && x.purch >= 10);
+  const best = cells.sort((x, y) => x.spend / x.purch - y.spend / y.purch)[0];
+  const ages = new Map(); for (const r of rows) { if (r.a === "Unknown") continue; if (!ages.has(r.a)) ages.set(r.a, Object.assign(audBlank(), {a:r.a})); audAdd(ages.get(r.a), r); }
+  const room = [...ages.values()].filter(x => x.purch >= 10).sort((x, y) => y.value / y.spend - x.value / x.spend)[0];
+  // biggest change: the last two whole weeks in the period, same age x gender cell, 10+ purchases in both
+  const ws = audWeeks(), w1 = ws.length ? ws[ws.length - 1].w : null, w0 = ws.length > 1 ? ws[ws.length - 2].w : null;
+  let chg = null;
+  if (w0 != null) { const pick = w => { const mm = new Map(); for (const r of rows) { if (r.w !== w || r.g === "Unknown" || r.a === "Unknown") continue; const k = r.g + "|" + r.a; if (!mm.has(k)) mm.set(k, Object.assign(audBlank(), {g:r.g, a:r.a})); audAdd(mm.get(k), r); } return mm; };
+    const A = pick(w0), B = pick(w1);
+    for (const [k, b] of B) { const a = A.get(k); if (!a || a.purch < 10 || b.purch < 10) continue; const ra = a.value / a.spend, rb = b.value / b.spend;
+      if (!chg || Math.abs(rb - ra) > Math.abs(chg.rb - chg.ra)) chg = {g:b.g, a:b.a, ra, rb}; } }
+  if (chg && Math.abs(chg.rb - chg.ra) < .03) chg = {flat:true};
+  const card = (l, v, c) => `<div class="card"><div class="l">${l}</div><div class="v">${v}</div><div class="c">${c}</div></div>`;
+  return `<div class="acards">` +
+    card("Best-buying audience", best ? `${best.g} ${best.a.replace("-", "–")}` : "–", best ? `${fmt$(best.spend / best.purch)} per purchase · overall ${fmt$(div(tot.spend, tot.purch))}` : "Not enough purchases") +
+    card("Room to grow", room ? `Ages ${room.a.replace("-", "–")}` : "–", room ? `Best ROAS (${fmtR(room.value / room.spend)}), yet only ${pctS(room.spend / tot.spend)} of spend` : "Not enough purchases") +
+    card("Biggest change vs last week", chg && chg.flat ? "No big change" : chg ? `${chg.g} ${chg.a.replace("-", "–")} ${chg.rb > chg.ra ? "↑" : "↓"}` : "–", chg && chg.flat ? "No group moved more than 0.03 in ROAS" : chg ? `ROAS ${fmtR(chg.ra)} → ${fmtR(chg.rb)}` : "Needs two whole weeks in the period") + `</div>`;
+}
+function audPyramid(rows){
+  const {m, tot} = segTotals(rows), get = (g, a) => m.get(g + "|" + a) || audBlank();
+  let mx = .001; for (const a of AGES) for (const g of ["Women","Men"]) { const x = get(g, a); mx = Math.max(mx, div(x.spend, tot.spend) || 0, div(x.purch, tot.purch) || 0); }
+  const bar = (v, c) => `<div class="pb" style="width:${Math.max(2, (v || 0) / mx * 100)}%;background:${c}"><span>${pctS(v)}</span></div>`;
+  return `<div class="pyr">${AGES.map(a => { const w = get("Women", a), mn = get("Men", a);
+    return `<div class="side l">${bar(div(w.spend, tot.spend), PCOL.Women[0])}${bar(div(w.purch, tot.purch), PCOL.Women[1])}</div><div class="age">${a.replace("-", "–")}</div><div class="side r">${bar(div(mn.spend, tot.spend), PCOL.Men[0])}${bar(div(mn.purch, tot.purch), PCOL.Men[1])}</div>`; }).join("")}</div>
+    <div class="legend"><span><i style="background:${PCOL.Women[0]}"></i>Women · share of spend</span><span><i style="background:${PCOL.Women[1]}"></i>Women · share of purchases</span><span><i style="background:${PCOL.Men[0]}"></i>Men · share of spend</span><span><i style="background:${PCOL.Men[1]}"></i>Men · share of purchases</span></div>`;
+}
+// heatmap: the number is the chosen metric; the color is ROAS against the account average for the same column (Mika 9.11: colors by the average)
+function audHeat(rows, avgRows, keyFn, attr, first){
+  const m = state.audm, cols = ["Women", "Men", ...AGES], g = new Map(), avg = Object.fromEntries(cols.map(c => [c, audBlank()]));
+  for (const r of avgRows) { if (avg[r.g]) audAdd(avg[r.g], r); if (avg[r.a]) audAdd(avg[r.a], r); }
   for (const r of rows) { const k = keyFn(r); if (!g.has(k)) g.set(k, {k, all:audBlank(), c:Object.fromEntries(cols.map(c => [c, audBlank()]))});
     const x = g.get(k); audAdd(x.all, r); if (x.c[r.g]) audAdd(x.c[r.g], r); if (x.c[r.a]) audAdd(x.c[r.a], r); }
   const list = [...g.values()].filter(x => x.all.spend >= 15).sort((a, b) => b.all.spend - a.all.spend);
-  const cell = (x, tot) => { const v = audVal(x, m, tot); const cls = x.purch < AUD_MIN ? "thin" : "";
-    return `<td class="${cls}" title="${fmtN(x.purch)} purchases · ${fmt$(x.spend)} spend">${m === "roas" ? `<span class="${roasCls(v)}">${fmtR(v)}</span>` : audFmt(m, v)}</td>`; };
-  const body = list.map(x => `<tr><td class="l">${esc(x.k)}</td><td>${fmt$(x.all.spend)}</td><td>${fmtN(x.all.purch)}</td><td>${fmtR(div(x.all.value, x.all.spend))}</td>${cols.map(c => cell(x.c[c], x.all)).join("")}</tr>`).join("")
-    || `<tr><td class="l muted" colspan="${cols.length + 4}" style="padding:20px">Nothing matches these filters.</td></tr>`;
-  return `<h3>${title}</h3><div class="sub2">${sub}</div><div class="tablewrap"><table><thead><tr><th class="l"></th><th>Spend</th><th>Purchases</th><th>ROAS</th>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`;
+  const show = x => m === "roas" ? fmtR(div(x.value, x.spend)) : m === "cpa" ? fmt$(div(x.spend, x.purch)) : fmtN(x.purch);
+  const cell = (x, c) => { if (x.purch < AUD_MIN) return `<td class="thin" title="${fmtN(x.purch)} purchases: too few to read">${show(x)}</td>`;
+    const r = div(x.value, x.spend), a = div(avg[c].value, avg[c].spend), d = a ? r / a : 1;
+    return `<td class="${d >= 1.08 ? "hg" : d <= .92 ? "hb" : "hn"}" title="ROAS ${fmtR(r)} · account ${fmtR(a)} · ${fmtN(x.purch)} purchases · ${fmt$(x.spend)}">${show(x)}</td>`; };
+  const head = `<tr><th class="l">${first}</th><th>Spend</th>${cols.map(c => `<th>${c.replace("-", "–")}</th>`).join("")}</tr>`;
+  const body = list.map(x => `<tr data-${attr}="${esc(x.k)}" title="Show only ${esc(x.k)}"><td class="l">${esc(x.k)}</td><td class="tot">${fmt$(x.all.spend)}</td>${cols.map(c => cell(x.c[c], c)).join("")}</tr>`).join("")
+    || `<tr><td class="l muted" colspan="${cols.length + 2}" style="padding:20px">Nothing matches these filters.</td></tr>`;
+  const avgRow = `<tr class="avg"><td class="l">Account average</td><td></td>${cols.map(c => `<td>${show(avg[c])}</td>`).join("")}</tr>`;
+  return `<div class="tablewrap"><table class="hm">${head}${body}${avgRow}</table></div>`;
 }
 function renderAudience(){
   const note = $("#note");
   if (!D.aud) { $("#aud").innerHTML = `<div class="note" style="padding:30px">The age and gender data arrives with the next morning update.</div>`; note.textContent = ""; $("#count").textContent = ""; return; }
   const ws = audWeeks(), acc = state.account === "All" ? "all accounts" : state.account;
-  const wtxt = ws.length ? `${ws[0].s.slice(5)} → ${ws[ws.length - 1].e.slice(5)}` : "no full week in this period";
-  const whole = audAgg(false), sel = audAgg(true), mLabel = AUDM.find(x => x[0] === state.audm)[1];
-  const scope = [state.editor !== "All" ? state.editor : "", state.series !== "All" ? state.series : ""].filter(Boolean).join(" · ") || "all editors and series";
-  $("#aud").innerHTML =
+  const wtxt = ws.length ? `${ws[0].s.slice(5)} → ${ws[ws.length - 1].e.slice(5)}` : "no whole week in this period";
+  const whole = audAgg(false), sel = audAgg(true);
+  const scope = [state.editor !== "All" ? state.editor : "", state.series !== "All" ? state.series : ""].filter(Boolean).join(" · ") || "All editors and series";
+  const btn = (k, l) => `<button data-am="${k}" class="${state.audm === k ? "on" : ""}">${l}</button>`;
+  $("#aud").innerHTML = audCards(sel) +
+    `<h3>Who gets the money, and who buys</h3><div class="sub2">${esc(scope)} · ${esc(acc)} · ${wtxt}. Light bar = share of spend, dark bar = share of purchases. Dark longer than light: the group brings back more than it gets.</div>` + audPyramid(sel) +
+    `<div class="hdr"><div><h3>By editor</h3><div class="sub2">Green: this group buys better from this editor than across the account. Red: worse. Striped: fewer than ${AUD_MIN} purchases. Click a row to see only that editor.</div></div><div class="seg">${btn("roas","ROAS")}${btn("cpa","Cost / purchase")}${btn("purch","Purchases")}</div></div>` +
+    audHeat(sel, whole, r => r.ed, "ae", "Editor") +
+    `<h3>By series</h3><div class="sub2">Same colors. Series with at least $15 spend. Click a row to see only that series.</div>` + audHeat(sel, whole, r => r.ser, "as", "Series") +
+    `<details><summary>Detailed tables: the whole account by gender and by age</summary>` +
     audSummary(whole, r => r.g, "Account · by gender", `Every ad in ${esc(acc)}, ${wtxt}. Editor and series filters do not apply here.`) +
-    audSummary(whole, r => r.a, "Account · by age", `Every ad in ${esc(acc)}, ${wtxt}.`) +
-    audMatrix(sel, r => r.ed, `By editor · ${mLabel}`, `${esc(scope)}, ${wtxt}. Each cell is the editor's ${mLabel.toLowerCase()} in that gender or age group. Faded: fewer than ${AUD_MIN} purchases.`) +
-    audMatrix(sel, r => r.ser, `By series · ${mLabel}`, `${esc(scope)}, ${wtxt}. Series with at least $15 spend. Faded: fewer than ${AUD_MIN} purchases.`);
+    audSummary(whole, r => r.a, "Account · by age", `Every ad in ${esc(acc)}, ${wtxt}.`) + `</details>`;
   $("#count").textContent = "";
-  note.textContent = `Meta's own age and gender breakdown, 7-day click / 1-day view, the same purchases as the rest of the page. Counted in whole weeks that end on the last data day, so the period snaps to weeks: a week counts when at least 4 of its days are inside the dates you chose. Downloads are not included.`;
+  note.textContent = `Meta's own age and gender breakdown, 7-day click / 1-day view, the same purchases as the rest of the page. Counted in whole weeks that end on the last data day: a week counts when at least 4 of its days are inside the dates you chose. “Biggest change” compares the last two weeks of the period, for groups with 10+ purchases in both. Downloads are not included.`;
 }
 function audienceSheet(){
   const out = [["Section","Group","Gender","Age","Spend","Purchases","Purchase value","ROAS","Cost / purchase","Link clicks","Clicks per purchase"]];
