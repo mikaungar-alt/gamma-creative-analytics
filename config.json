@@ -20,7 +20,7 @@
     },
     {
       "name": "Denis",
-      "pattern": "^(meta|tt)_\\d|_dg(\\b|_|$)"
+      "pattern": "^(meta|tt)_\\d|_dg(\\b|_|$)|_he_([a-z]{0,2}\\d|sd|pq|fs|ep)"
     },
     {
       "name": "Mikita",

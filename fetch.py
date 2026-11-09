@@ -340,7 +340,7 @@ def main():
 
 
 def relink():
-    """Only the Drive links changed: open the live data, redo the drive column, lock it again.
+    """Only config changed: open the live data, redo the editor and drive columns, lock it again.
     Seconds instead of a full Meta pull."""
     path = os.path.join(ROOT, "site", "data.enc")
     d = json.load(open(path))
@@ -352,8 +352,12 @@ def relink():
         for a in payload["ads"]:
             a.append("")
     ci, di = cols.index("creative"), cols.index("drive")
+    # editor rules live in config.json, so a rule change (Denis DG -> HE, 9.11) also lands without a Meta pull
+    ei = cols.index("editor")
+    payload["editors"] = [e["name"] for e in CONFIG["editors"]] + [CONFIG["default_editor"]]
     match, links = drive_matcher(load_drive()), {}
     for a in payload["ads"]:
+        a[ei] = editor_of(a[ci])
         if a[ci] not in links:
             links[a[ci]] = match(a[ci])
         a[di] = links[a[ci]]
