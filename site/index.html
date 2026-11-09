@@ -125,7 +125,8 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
     <div class="toolbar">
       <input type="search" id="q" placeholder="Search creative name…" style="flex:1;min-width:180px;max-width:360px">
       <label class="check" id="dimwrap" hidden>Break down by <select id="dim"></select></label>
-      <label class="check"><input type="checkbox" id="tested" checked> Tested only (spend ≥ $15)</label>
+      <label class="check" id="testedwrap"><input type="checkbox" id="tested" checked> Tested only (spend ≥ $15)</label>
+      <label class="check" id="neverwrap" hidden><input type="checkbox" id="never"> Hide ads that never ran</label>
       <span class="spacer"></span><span class="muted" id="count"></span>
     </div>
     <div class="tablewrap"><table id="tbl"></table></div>
@@ -139,7 +140,7 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
 "use strict";
 const $ = s => document.querySelector(s);
 const PW_KEY = "gca_pw";
-let D, AD, ROWS, state = {editor:"All", series:"All", account:"All", from:null, to:null, tab:"creatives", q:"", tested:true, sort:{key:"spend",dir:-1}, limit:150};
+let D, AD, ROWS, BL = [], state = {editor:"All", series:"All", account:"All", from:null, to:null, tab:"creatives", q:"", tested:true, hideNever:false, sort:{key:"spend",dir:-1}, limit:150};
 
 // ---------- theme ----------
 try { const t = localStorage.getItem("gca_theme"); if (t) document.documentElement.dataset.theme = t; } catch(e){}
@@ -216,6 +217,8 @@ function start(){
   state.dim = "edit"; $("#dim").innerHTML = DIMS.map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
   $("#dim").onchange = e => { state.dim = e.target.value; state.sort = {key:"spend", dir:-1}; renderTable(); };
   ROWS = D.rows;
+  const bc = D.blocked_cols || []; BL = (D.blocked || []).map(b => Object.assign(Object.fromEntries(bc.map((k, i) => [k, b[i]]))));
+  for (const b of BL) Object.assign(b, parseNaming(b.creative));
   $("#updated").textContent = `Meta · ${D.since} → ${D.until} · updated ${D.generated}`;
   state.to = D.until; const f = new Date(D.until + "T00:00:00Z"); f.setUTCDate(f.getUTCDate() - 13); state.from = iso(f) < D.since ? D.since : iso(f);
   $("#from").min = $("#to").min = D.since; $("#from").max = $("#to").max = D.until;
@@ -241,9 +244,10 @@ function buildFilters(){
   $("#to").onchange = e => { state.to = e.target.value || D.until; render(); };
   $("#q").oninput = e => { state.q = e.target.value.toLowerCase(); state.limit = 150; renderTable(); };
   $("#tested").onchange = e => { state.tested = e.target.checked; renderTable(); };
-  const tabs = [["creatives","Creatives"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["campaigns","Campaigns"]];
+  $("#never").onchange = e => { state.hideNever = e.target.checked; renderTable(); };
+  const tabs = [["creatives","Creatives"],["blocked","Blocked"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["campaigns","Campaigns"]];
   $("#tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab" data-t="${k}">${l}</button>`).join("");
-  $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = {key:"spend", dir:-1}; state.limit = 150; render(); };
+  $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = b.dataset.t === "blocked" ? {key:"date", dir:-1} : {key:"spend", dir:-1}; state.limit = 150; render(); };
   $("#more").onclick = () => { state.limit += 300; renderTable(); };
   $("#export").onclick = exportXlsx;
 }
@@ -286,6 +290,8 @@ function compute(){
     const t = byCr.get(k); add(t, r, wk); t.camps.add(a.campaign);
   }
   const crs = [...byCr.values()].map(finish);
+  const bl = new Map(); for (const b of blockedIn(true)) { const k = b.editor + "|" + b.creative; bl.set(k, (bl.get(k) || 0) + 1); }
+  for (const t of crs) t.blocked = bl.get(t.meta.editor + "|" + t.meta.creative) || 0;
   // benchmarks for "where it breaks": all editors, same series/account/period, tested creatives
   const bench = [...all.values()].map(finish).filter(t => t.spend >= 15);
   const med = arr => { const s = arr.filter(v => v != null).sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : null; };
@@ -310,6 +316,25 @@ function buildSeries(){
     ser.map(s => `<option value="${esc(s)}">${esc(s)} · ${m.get(s).crs.size} creative${m.get(s).crs.size > 1 ? "s" : ""} · ${fmt$(m.get(s).spend)}</option>`).join("");
   $("#series").value = state.series;
 }
+
+// ---------- blocked ads (from 9.11 on): the original creative that Meta rejected, even after the team swapped it ----------
+// the date filter reads "to the end" when it ends on the last data day, so today's rejections show up
+function blockedIn(withNever){
+  return BL.filter(b => inScope(b) && b.date >= state.from && (state.to === D.until || b.date <= state.to) &&
+    (!state.q || b.creative.toLowerCase().includes(state.q)) && (withNever || !state.hideNever || b.ran));
+}
+const statusPill = s => `<span class="pill ${s === "Still blocked" ? "b" : s === "Approved again" ? "g" : "w"}">${esc(s)}</span>`;
+const thumbCell = (src, name, sub) => `<div class="cr">${src ? `<img class="thumb" loading="lazy" src="${esc(src)}" data-big="${esc(src)}" alt="">` : `<div class="thumb"></div>`}<div><div class="t" title="${esc(name)}">${esc(name || "–").replace(/([_\-.])/g, "$1<wbr>")}</div>${sub ? `<div class="s">${sub}</div>` : ""}</div></div>`;
+const BCOLS = [
+  ["creative","Original creative (blocked)",b=>b.creative,(v,b)=>thumbCell(b.thumb, v, `${b.drive ? `<a class="drv" href="https://drive.google.com/file/d/${esc(b.drive)}/view" target="_blank" rel="noopener">Drive ↗</a> · ` : ""}${esc(b.series)}${b.ran ? "" : ' · <span class="pill n">Never ran</span>'}`),1],
+  ["editor","Editor",b=>b.editor,v=>`<span class="ed">${esc(v)}</span>`,1],
+  ["date","Blocked on",b=>b.date,v=>esc(v),1],
+  ["status","Status now",b=>b.status,statusPill,1],
+  ["new_name","Replaced with",b=>b.new_name,(v,b)=>v ? thumbCell(b.new_thumb, v.replace(/^CR\s+/, "").replace(/\s*\[.*$/, "")) : '<span class="muted">–</span>',1],
+  ["reason","Reason",b=>b.reason,v=>v ? esc(v) : '<span class="muted" title="Meta shows the reason only while the ad is still rejected">–</span>',1],
+  ["campaign","Campaign",b=>b.campaign,v=>esc(v),1],
+  ["account","Account",b=>b.account,v=>esc(v),1],
+];
 
 // ---------- rendering ----------
 let C;
@@ -349,21 +374,25 @@ const MET = [
   ["thrup","ThruPlay",t=>t.thrup,fmtP],["avg","Avg watch",t=>t.avg,fmtS],["cpc","Cost / click",t=>t.cpc,fmt$],["c2p","Click → purchase",t=>t.c2p,fmtP],
 ];
 function cols(){
+  if (state.tab === "blocked") return BCOLS;
   if (state.tab === "creatives") return [
     ["creative","Creative",t=>t.meta.creative,(v,t)=>`<div class="cr">${t.meta.thumb?`<img class="thumb" loading="lazy" src="${esc(t.meta.thumb)}" data-big="${esc(t.meta.thumb)}" alt="">`:`<div class="thumb"></div>`}<div><div class="t" title="${esc(v)}">${esc(v).replace(/([_\-.])/g, "$1<wbr>")}</div><div class="s">${t.meta.drive?`<a class="drv" href="https://drive.google.com/file/d/${esc(t.meta.drive)}/view" target="_blank" rel="noopener">Drive ↗</a> · `:""}${esc(t.meta.series)} · ${t.nAds} ad${t.nAds>1?"s":""} · ${t.camps.size} campaign${t.camps.size>1?"s":""}</div></div></div>`,1],
     ["editor","Editor",t=>t.meta.editor,v=>`<span class="ed">${esc(v)}</span>`,1],
     ["format","Format",t=>t.meta.format,v=>esc(v)||'<span class="muted">–</span>',1],
     ["music","Music",t=>t.meta.music,v=>esc(v)||'<span class="muted">–</span>',1],
+    ["blocked","Blocked",t=>t.blocked,v=>v ? `<span class="pill b">${v}</span>` : '<span class="muted">–</span>'],
     ...MET,
     ["breaks","Where it breaks",t=>t.breaks,breaksPill,1],
     ["wk","ROAS by week",t=>t.wroas[3],(v,t)=>spark(t.wroas),1],
     ["trend","Trend",t=>t.trend,trendPill,1],
   ];
   const label = {series:"Series", music:"Music", format:"Format", campaigns:"Campaign", weekly:"Week", naming:(DIMS.find(d => d[0] === state.dim) || [,""])[1]}[state.tab];
-  return [["g",label,t=>t.g,v=>esc(v),1],["n","Creatives",t=>t.nCr,fmtN],["nt","Tested",t=>t.nT,fmtN],...MET.slice(0,7),...MET.slice(7)];
+  const bcols = state.tab === "weekly" ? [] : [["bl","Blocked",t=>t.bl,v=>v ? `<span class="pill b">${v}</span>` : '<span class="muted">–</span>'],["blr","Block rate",t=>t.blr,fmtP]];
+  return [["g",label,t=>t.g,v=>esc(v),1],["n","Creatives",t=>t.nCr,fmtN],["nt","Tested",t=>t.nT,fmtN],...bcols,...MET.slice(0,7),...MET.slice(7)];
 }
 function groupRows(){
   let crs = C.crs.filter(t => !state.q || t.meta.creative.toLowerCase().includes(state.q));
+  if (state.tab === "blocked") return blockedIn(false);
   if (state.tab === "creatives") return state.tested ? crs.filter(t => t.spend >= 15) : crs;
   if (state.tab === "weekly") return weekly();
   const keyFn = {series:t=>[t.meta.series], music:t=>[t.meta.music||"(none in name)"], format:t=>[t.meta.format||"(none in name)"], naming:t=>[t.meta.nc ? t.meta[state.dim] : OLD_NAME], campaigns:t=>[...t.camps]}[state.tab];
@@ -379,6 +408,11 @@ function groupRows(){
     for (const r of ROWS) { if (r[0] < lo || r[0] > hi) continue; const a = AD[r[1]]; if (!inScope(a) || !keys.has(a.editor + "|" + a.creative)) continue;
       const x = g.get(a.campaign); if (x) add(x, r, -1); }
   }
+  // Blocked = distinct blocked creatives in the group; Block rate = blocked ÷ all creatives in the group (those that ran + blocked ones that never did)
+  const keyB = {series:b=>[b.series], music:b=>[b.music||"(none in name)"], format:b=>[b.format||"(none in name)"], naming:b=>[b.nc ? b[state.dim] : OLD_NAME], campaigns:b=>[b.campaign]}[state.tab];
+  const mem = new Map(); for (const t of crs) for (const k of keyFn(t)) { if (!mem.has(k)) mem.set(k, {all:new Set(), bl:new Set()}); mem.get(k).all.add(t.meta.editor + "|" + t.meta.creative); }
+  for (const b of blockedIn(false)) for (const k of keyB(b)) { if (!g.has(k)) continue; const m = mem.get(k); const id = b.editor + "|" + b.creative; m.all.add(id); m.bl.add(id); }
+  for (const [k, x] of g) { const m = mem.get(k); x.bl = m ? m.bl.size : 0; x.blr = m && m.all.size ? x.bl * 100 / m.all.size : null; }
   return [...g.values()].map(finish);
 }
 function weekly(){
@@ -395,8 +429,9 @@ function weekly(){
 }
 function renderTable(){
   $("#dimwrap").hidden = state.tab !== "naming";
+  $("#neverwrap").hidden = state.tab !== "blocked"; $("#testedwrap").hidden = state.tab === "blocked";
   const cs = cols(); let rows = groupRows();
-  const sc = cs.find(c => c[0] === state.sort.key) || cs.find(c => c[0] === "spend");
+  const sc = cs.find(c => c[0] === state.sort.key) || cs.find(c => c[0] === "spend") || cs.find(c => c[0] === "date");
   if (state.tab === "weekly" && state.sort.key === "spend" && state.sort.dir === -1 && !state._wsorted) rows.sort((a, b) => b._o - a._o);
   else rows.sort((a, b) => { const x = sc[2](a), y = sc[2](b);
     if (x == null || x === "") return 1; if (y == null || y === "") return -1;
@@ -407,11 +442,12 @@ function renderTable(){
     <tbody>${shown.map(t => `<tr${state.tab === "series" ? ` class="go" data-g="${esc(t.g)}" title="Show this series' creatives"` : ""}>${cs.map(c => `<td class="${c[4] ? "l" : ""}${c[0] === "creative" ? " name" : ""}">${c[3](c[2](t), t)}</td>`).join("")}</tr>`).join("") ||
     `<tr><td class="l muted" colspan="${cs.length}" style="padding:30px">Nothing matches these filters.</td></tr>`}</tbody>`;
   $("#tbl thead").onclick = e => { const th = e.target.closest("th"); if (!th) return; const k = th.dataset.k;
-    state._wsorted = true; state.sort = {key:k, dir: state.sort.key === k ? -state.sort.dir : (["creative","editor","format","music","g","breaks","trend"].includes(k) ? 1 : -1)}; renderTable(); };
+    state._wsorted = true; state.sort = {key:k, dir: state.sort.key === k ? -state.sort.dir : (["creative","editor","format","music","g","breaks","trend","status","new_name","reason","campaign","account"].includes(k) ? 1 : -1)}; renderTable(); };
   $("#count").textContent = `${rows.length.toLocaleString("en-US")} rows`;
   $("#morewrap").hidden = rows.length <= state.limit;
   $("#note").textContent = state.tab === "creatives"
     ? "A creative = all ads with the same file name (copies merged). ROAS = purchase value ÷ spend, 7-day click / 1-day view. “Where it breaks” compares link CTR and click→purchase against the median of all tested creatives in the same filters. Trend compares the last two weeks of the period."
+    : state.tab === "blocked" ? `One row per original creative that Meta rejected, counted from ${(D.blocked_since || "9.11.2026")}. The team usually swaps the video in a rejected ad; this shows the one that was blocked, and what replaced it. The reason shows only while the ad is still rejected. “Never ran” = rejected at review, before the ad ever spent (e.g. a new or dummy campaign); tick the box to hide them.`
     : state.tab === "series" ? "Totals for the creatives that match the current filters. Click a series to see its creatives."
     : state.tab === "naming" ? "Reads the editors' naming convention from the file name: SERIES_EDITOR_BATCH_AD_duration_edit_inserts_graphics_cta_voiceover_mx###. Files named before the convention show as “(old naming)”."
     : "Totals for the creatives that match the current filters.";
@@ -424,6 +460,11 @@ document.addEventListener("mousemove", e => { const p = $("#preview"); if (p.sty
   const x = Math.min(e.clientX + 18, innerWidth - 250), y = Math.min(e.clientY - 40, innerHeight - 430); p.style.left = x + "px"; p.style.top = Math.max(8, y) + "px"; });
 
 // ---------- export ----------
+function blockedSheet(){
+  const head = ["Original creative","Series","Editor","Blocked on","Status now","Replaced with","Reason","Campaign","Account","Ran","Drive"];
+  const body = blockedIn(true).sort((a, b) => b.date.localeCompare(a.date)).map(b => [b.creative, b.series, b.editor, b.date, b.status, b.new_name, b.reason, b.campaign, b.account, b.ran ? "yes" : "never ran", b.drive ? "https://drive.google.com/file/d/" + b.drive + "/view" : ""]);
+  return XLSX.utils.aoa_to_sheet([head, ...body]);
+}
 function sheetFrom(tab){
   const keep = {tab:state.tab, limit:state.limit}; state.tab = tab; const cs = cols(); const rows = groupRows();
   rows.sort((a, b) => tab === "weekly" ? b._o - a._o : (b.spend - a.spend)); state.tab = keep.tab;
@@ -451,6 +492,7 @@ function exportXlsx(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(info), "Filters");
   for (const [k, n] of [["creatives","Creatives"],["series","By Series"],["weekly","Weekly"],["music","Music"],["format","Format"],["campaigns","Campaigns"]]) XLSX.utils.book_append_sheet(wb, sheetFrom(k), n);
   XLSX.utils.book_append_sheet(wb, namingSheet(), "Naming");
+  XLSX.utils.book_append_sheet(wb, blockedSheet(), "Blocked");
   const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor}${state.series === "All" ? "" : " - " + state.series.replace(/[\\/:*?"<>|]/g, "")} - ${state.from} to ${state.to}.xlsx`;
   XLSX.writeFile(wb, name);
 }

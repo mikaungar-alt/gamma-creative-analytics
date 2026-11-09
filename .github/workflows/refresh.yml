@@ -49,6 +49,7 @@ jobs:
         if: github.event_name == 'push' && steps.reuse.outcome == 'success'
         continue-on-error: true
         env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
           DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
         run: python -u fetch.py --relink

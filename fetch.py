@@ -264,6 +264,118 @@ def thumbnails(ad_ids):
     return out
 
 
+# ---------- blocked ads (Mika 9.11: "שיתחיל מהיום לא אחורה") ----------
+# The team swaps the video inside a rejected ad, after which Meta only shows the new one.
+# The activity log keeps both: the rejection (run status -> "Not Approved") and the swap
+# (update_ad_creative, old creative id in old_value[2]). So the original that was blocked can be shown.
+REJECTED = ("not approved", "disapproved", "rejected")
+
+
+def log_events(account_id, since_ts):
+    out, url = [], f"{API}/{account_id}/activities"
+    params = {"fields": "event_type,object_id,object_name,extra_data,event_time", "limit": 200, "since": since_ts}
+    for e in paged(url, params):
+        if e.get("event_type") in ("update_ad_run_status", "update_ad_creative"):
+            try:
+                e["x"] = json.loads(e.get("extra_data") or "{}")
+            except ValueError:
+                e["x"] = {}
+            out.append(e)
+    return out
+
+
+def objects(ids, fields):
+    out, ids = {}, [i for i in dict.fromkeys(ids) if i]
+    for i in range(0, len(ids), 50):
+        chunk = ids[i:i + 50]
+        try:
+            out.update(get(f"{API}/", {"ids": ",".join(chunk), "fields": fields}, tries=2))
+        except Exception as e:  # one object we may not read fails the whole chunk: fall back to one by one
+            print("objects chunk failed, going one by one:", str(e)[:120], file=sys.stderr)
+            for one in chunk:
+                try:
+                    out[one] = get(f"{API}/{one}", {"fields": fields}, tries=1)
+                except Exception:
+                    pass
+    return out
+
+
+def blocked_ads(spent_ids):
+    """One row per (ad, original creative) rejected since config blocked_since."""
+    since = CONFIG.get("blocked_since", "2026-11-09")
+    since_ts = int(dt.datetime.fromisoformat(since).replace(tzinfo=dt.timezone.utc).timestamp())
+    found = []
+    for acc in CONFIG["accounts"]:
+        try:
+            ev = log_events(acc["id"], since_ts)
+        except Exception as e:
+            print(f"blocked: log failed for {acc['name']}: {e}", file=sys.stderr)
+            continue
+        ev.sort(key=lambda e: e["event_time"])
+        swaps = {}
+        for e in ev:
+            if e["event_type"] == "update_ad_creative":
+                old, new = e["x"].get("old_value") or [], e["x"].get("new_value") or []
+                swaps.setdefault(e["object_id"], []).append((e["event_time"], str(old[-1]) if old else "", str(new[-1]) if new else ""))
+        seen = set()
+        for e in ev:
+            if e["event_type"] != "update_ad_run_status" or str(e["x"].get("new_value", "")).lower() not in REJECTED:
+                continue
+            aid, t = e["object_id"], e["event_time"]
+            later = [s for s in swaps.get(aid, []) if s[0] > t]
+            orig = later[0][1] if later else ""
+            if (aid, orig or "now") in seen:
+                continue
+            seen.add((aid, orig or "now"))
+            found.append({"aid": aid, "name": e.get("object_name", ""), "t": t, "acc": acc["name"],
+                          "orig": orig, "new": later[-1][2] if later else "",
+                          "was_live": str(e["x"].get("old_value", "")).lower() == "active"})
+    if not found:
+        return []
+    cfields = "id,name,thumbnail_url,video_id,object_story_spec{video_data{video_id}}"
+    ads = objects([f["aid"] for f in found], f"name,effective_status,ad_review_feedback,campaign{{name}},creative{{{cfields}}}")
+    crs = objects([c for f in found for c in (f["orig"], f["new"])], cfields)
+
+    def vid_of(c):  # the creative's thumbnail is often just the page logo; the video itself has the real frame and file name
+        return (c or {}).get("video_id") or (((c or {}).get("object_story_spec") or {}).get("video_data") or {}).get("video_id", "")
+    pool = [(ads.get(f["aid"], {}).get("creative") or {}) for f in found] + list(crs.values())
+    vids = objects([vid_of(c) for c in pool], "picture,title")
+
+    def look(c):
+        v = vids.get(vid_of(c), {})
+        title = re.sub(r"\.(mp4|mov)$", "", v.get("title") or "", flags=re.I)
+        return (v.get("picture") or (c or {}).get("thumbnail_url", "")), title
+    match, rows = drive_matcher(load_drive()), []
+    for f in found:
+        ad = ads.get(f["aid"], {})
+        cur = ad.get("creative") or {}
+        orig = crs.get(f["orig"]) if f["orig"] else cur
+        new = crs.get(f["new"], {}) if f["new"] else {}
+        name = ad.get("name") or f["name"]
+        o_thumb, o_title = look(orig)
+        n_thumb, n_title = look(new) if new else ("", "")
+        key = creative_key(o_title or name)
+        camp = (ad.get("campaign") or {}).get("name", "")
+        fb = ad.get("ad_review_feedback") or {}
+        reason = "; ".join(f"{k}: {v}" for part in fb.values() if isinstance(part, dict) for k, v in part.items())
+        same_video = bool(new) and vid_of(new) == vid_of(orig)
+        if fb or ad.get("effective_status") == "DISAPPROVED":
+            status = "Still blocked"
+        elif new:
+            status = "Text replaced" if same_video else "Replaced"
+        else:
+            status = "Approved again"
+        rows.append([f["aid"], name, key, editor_of(key), series_of(key, camp), camp, f["acc"], f["t"][:10],
+                     o_thumb, status, n_thumb, n_title or re.sub(r"\s*\[.*$", "", re.sub(r"^CR\s+", "", new.get("name", ""))),
+                     reason, f["was_live"] or f["aid"] in spent_ids, music_of(key), format_of(key), match(key)])
+    print(f"blocked: {len(rows)} rejected originals since {since}", file=sys.stderr)
+    return rows
+
+
+BLOCKED_COLS = ["ad_id", "name", "creative", "editor", "series", "campaign", "account", "date", "thumb",
+                "status", "new_thumb", "new_name", "reason", "ran", "music", "format", "drive"]
+
+
 def main():
     until = dt.date.today() - dt.timedelta(days=1)
     since = until - dt.timedelta(days=DAYS - 1)
@@ -327,6 +439,8 @@ def main():
                      "p100", "thru", "watch_sum", "plays"],
         "editors": [e["name"] for e in CONFIG["editors"]] + [CONFIG["default_editor"]],
         "ads": ad_list, "rows": rows,
+        "blocked_cols": BLOCKED_COLS, "blocked": blocked_ads(set(ads.keys())),
+        "blocked_since": CONFIG.get("blocked_since", "2026-11-09"),
     }
     raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
     salt, iv = os.urandom(16), os.urandom(12)
@@ -362,6 +476,10 @@ def relink():
             links[a[ci]] = match(a[ci])
         a[di] = links[a[ci]]
     print(f"drive links: {sum(1 for v in links.values() if v)} of {len(links)} creatives", file=sys.stderr)
+    if TOKEN:  # blocked ads come from today's activity log: cheap, so every push refreshes them
+        payload["blocked_cols"] = BLOCKED_COLS
+        payload["blocked_since"] = CONFIG.get("blocked_since", "2026-11-09")
+        payload["blocked"] = blocked_ads({a[cols.index("id")] for a in payload["ads"]})
     raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
     iv = os.urandom(12)
     ct = AESGCM(key).encrypt(iv, raw, None)
