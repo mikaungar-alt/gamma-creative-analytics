@@ -199,14 +199,30 @@ const NAMING = {
   vo: {"0":"None", NAR:"Narrator", CH:"Character"},
 };
 const DIMS = [["dur","Duration"],["edit","Edit type"],["ins","Inserts"],["gfx","Graphics"],["cta","CTA"],["vo","Voiceover"],["mx","Music"]];
-const OLD_NAME = "(old naming)";
+const OLD_NAME = "Named before the convention";
+// files that carry an editor code (Bogdan BY/YB, Denis HE/DG, Mikita TZ) are in the new naming even when a code
+// is not in the dictionary yet or a field is left out (Mika 9.11: Mikita's OL/HL/CHL and Denis's HE files must not sit with the old names)
+const EDITOR_CODE = /^(BY|YB|HE|DG|TZ)$/i;
+const SKIP = /^(\d+|B\d+|MX\d{3}|MU\d{3})$/i;
 function parseNaming(name){
   const tk = String(name).split("_"), i = tk.findIndex(x => /^\d+(s|m)$/i.test(x));
-  if (i < 0 || !NAMING.edit[(tk[i + 1] || "").toUpperCase()]) return {nc:false};
-  const out = {nc:true, dur:tk[i].toLowerCase()};
-  ["edit","ins","gfx","cta","vo"].forEach((k, j) => { const c = (tk[i + 1 + j] || "").toUpperCase();
-    out[k] = NAMING[k][c] || (c ? `Unknown code: ${c}` : "Missing"); });
-  const m = tk.find(x => /^mx\d{3}$/i.test(x)); out.mx = m ? m.toUpperCase() : "Missing";
+  const e = tk.findIndex((x, j) => j >= 1 && j <= 3 && j < tk.length - 1 && EDITOR_CODE.test(x)); // a trailing _BY is Bogdan's pre-convention name
+  const known = i >= 0 && NAMING.edit[(tk[i + 1] || "").toUpperCase()];
+  if (!known && e < 0) return {nc:false};
+  const m = tk.find(x => /^mx\d{3}$/i.test(x)), mx = m ? m.toUpperCase() : "Missing";
+  if (i >= 0) { // positional: duration, then edit / inserts / graphics / CTA / voiceover
+    const out = {nc:true, dur:tk[i].toLowerCase(), mx};
+    ["edit","ins","gfx","cta","vo"].forEach((k, j) => { const c = (tk[i + 1 + j] || "").toUpperCase();
+      out[k] = /^mx\d{3}$/i.test(c) || !c ? "Missing" : NAMING[k][c] || `Not in dictionary: ${c}`; });
+    return out;
+  }
+  // no duration: pick up whatever dictionary codes appear after the editor code; anything unknown goes under Edit type
+  const out = {nc:true, dur:"Missing", mx}, unknown = [];
+  for (const x of tk.slice(e + 1)) { const c = x.toUpperCase(); if (SKIP.test(c) || c === "0") continue;
+    const k = ["edit","ins","gfx","cta","vo"].find(k => NAMING[k][c] && !out[k]);
+    if (k) out[k] = NAMING[k][c]; else if (/^[A-Z]{2,5}$/.test(c)) unknown.push(c); }
+  if (!out.edit) out.edit = unknown.length ? `Not in dictionary: ${unknown.join(" ")}` : "Missing";
+  for (const k of ["ins","gfx","cta","vo"]) out[k] = out[k] || "Missing";
   return out;
 }
 
@@ -329,6 +345,7 @@ const BCOLS = [
   ["creative","Original creative (blocked)",b=>b.creative,(v,b)=>thumbCell(b.thumb, v, `${b.drive ? `<a class="drv" href="https://drive.google.com/file/d/${esc(b.drive)}/view" target="_blank" rel="noopener">Drive ↗</a> · ` : ""}${esc(b.series)}${b.ran ? "" : ' · <span class="pill n">Never ran</span>'}`),1],
   ["editor","Editor",b=>b.editor,v=>`<span class="ed">${esc(v)}</span>`,1],
   ["date","Blocked on",b=>b.date,v=>esc(v),1],
+  ["kind","Block type",b=>b.kind || "Rejected",v=>`<span class="pill b">${esc(v)}</span>`,1],
   ["status","Status now",b=>b.status,statusPill,1],
   ["new_name","Replaced with",b=>b.new_name,(v,b)=>v ? thumbCell(b.new_thumb, v.replace(/^CR\s+/, "").replace(/\s*\[.*$/, "")) : '<span class="muted">–</span>',1],
   ["reason","Reason",b=>b.reason,v=>v ? esc(v) : '<span class="muted" title="Meta shows the reason only while the ad is still rejected">–</span>',1],
@@ -442,14 +459,14 @@ function renderTable(){
     <tbody>${shown.map(t => `<tr${state.tab === "series" ? ` class="go" data-g="${esc(t.g)}" title="Show this series' creatives"` : ""}>${cs.map(c => `<td class="${c[4] ? "l" : ""}${c[0] === "creative" ? " name" : ""}">${c[3](c[2](t), t)}</td>`).join("")}</tr>`).join("") ||
     `<tr><td class="l muted" colspan="${cs.length}" style="padding:30px">Nothing matches these filters.</td></tr>`}</tbody>`;
   $("#tbl thead").onclick = e => { const th = e.target.closest("th"); if (!th) return; const k = th.dataset.k;
-    state._wsorted = true; state.sort = {key:k, dir: state.sort.key === k ? -state.sort.dir : (["creative","editor","format","music","g","breaks","trend","status","new_name","reason","campaign","account"].includes(k) ? 1 : -1)}; renderTable(); };
+    state._wsorted = true; state.sort = {key:k, dir: state.sort.key === k ? -state.sort.dir : (["creative","editor","format","music","g","breaks","trend","kind","status","new_name","reason","campaign","account"].includes(k) ? 1 : -1)}; renderTable(); };
   $("#count").textContent = `${rows.length.toLocaleString("en-US")} rows`;
   $("#morewrap").hidden = rows.length <= state.limit;
   $("#note").textContent = state.tab === "creatives"
     ? "A creative = all ads with the same file name (copies merged). ROAS = purchase value ÷ spend, 7-day click / 1-day view. “Where it breaks” compares link CTR and click→purchase against the median of all tested creatives in the same filters. Trend compares the last two weeks of the period."
-    : state.tab === "blocked" ? `One row per original creative that Meta rejected, counted from ${(D.blocked_since || "9.11.2026")}. The team usually swaps the video in a rejected ad; this shows the one that was blocked, and what replaced it. The reason shows only while the ad is still rejected. “Never ran” = rejected at review, before the ad ever spent (e.g. a new or dummy campaign); tick the box to hide them.`
+    : state.tab === "blocked" ? `One row per original creative that Meta rejected or marked “With issues” (also a rejection: the ad cannot be turned back on), counted from ${(D.blocked_since || "9.11.2026")}. The team usually swaps the video in a rejected ad; this shows the one that was blocked, and what replaced it. The reason shows only while the ad is still rejected. “Never ran” = rejected at review, before the ad ever spent (e.g. a new or dummy campaign); tick the box to hide them.`
     : state.tab === "series" ? "Totals for the creatives that match the current filters. Click a series to see its creatives."
-    : state.tab === "naming" ? "Reads the editors' naming convention from the file name: SERIES_EDITOR_BATCH_AD_duration_edit_inserts_graphics_cta_voiceover_mx###. Files named before the convention show as “(old naming)”."
+    : state.tab === "naming" ? "Reads the editors' naming convention from the file name: SERIES_EDITOR_BATCH_AD_duration_edit_inserts_graphics_cta_voiceover_mx###. Files with an editor code count as the new naming even if a code is not in the dictionary yet (shown as “Not in dictionary: …”) or a field is missing. Files with no editor code show as “Named before the convention”."
     : "Totals for the creatives that match the current filters.";
 }
 
@@ -461,8 +478,8 @@ document.addEventListener("mousemove", e => { const p = $("#preview"); if (p.sty
 
 // ---------- export ----------
 function blockedSheet(){
-  const head = ["Original creative","Series","Editor","Blocked on","Status now","Replaced with","Reason","Campaign","Account","Ran","Drive"];
-  const body = blockedIn(true).sort((a, b) => b.date.localeCompare(a.date)).map(b => [b.creative, b.series, b.editor, b.date, b.status, b.new_name, b.reason, b.campaign, b.account, b.ran ? "yes" : "never ran", b.drive ? "https://drive.google.com/file/d/" + b.drive + "/view" : ""]);
+  const head = ["Original creative","Series","Editor","Blocked on","Block type","Status now","Replaced with","Reason","Campaign","Account","Ran","Drive"];
+  const body = blockedIn(true).sort((a, b) => b.date.localeCompare(a.date)).map(b => [b.creative, b.series, b.editor, b.date, b.kind || "Rejected", b.status, b.new_name, b.reason, b.campaign, b.account, b.ran ? "yes" : "never ran", b.drive ? "https://drive.google.com/file/d/" + b.drive + "/view" : ""]);
   return XLSX.utils.aoa_to_sheet([head, ...body]);
 }
 function sheetFrom(tab){
