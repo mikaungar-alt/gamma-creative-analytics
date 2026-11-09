@@ -269,6 +269,23 @@ def thumbnails(ad_ids):
 # The activity log keeps both: the rejection (run status -> "Not Approved") and the swap
 # (update_ad_creative, old creative id in old_value[2]). So the original that was blocked can be shown.
 REJECTED = ("not approved", "disapproved", "rejected")
+# "נדרש עדכון" / With issues is a rejection too (Ads Manager 9.11: "Can Not Enable Ad with Ad Review Rejected").
+# Its label is translated per user locale, so match the run_status code, which every locale shares:
+# 18 = with issues (seen on ad 52562782358014, 8.11 ~13:23 UTC, together with a with_issue_code). 1 = active.
+WITH_ISSUES_CODE = 18
+
+
+def rejection_kind(x):
+    """'Rejected', 'With issues', or '' for a run-status change that is not a block."""
+    rs = x.get("run_status") if isinstance(x.get("run_status"), dict) else {}
+    if rs.get("new_value") == WITH_ISSUES_CODE or "with_issue_code" in x:
+        return "With issues"
+    return "Rejected" if str(x.get("new_value", "")).lower() in REJECTED else ""
+
+
+def was_active(x):
+    rs = x.get("run_status") if isinstance(x.get("run_status"), dict) else {}
+    return rs.get("old_value") == 1 or str(x.get("old_value", "")).lower() == "active"
 
 
 def log_events(account_id, since_ts):
@@ -319,7 +336,8 @@ def blocked_ads(spent_ids):
                 swaps.setdefault(e["object_id"], []).append((e["event_time"], str(old[-1]) if old else "", str(new[-1]) if new else ""))
         seen = set()
         for e in ev:
-            if e["event_type"] != "update_ad_run_status" or str(e["x"].get("new_value", "")).lower() not in REJECTED:
+            kind = rejection_kind(e["x"]) if e["event_type"] == "update_ad_run_status" else ""
+            if not kind:
                 continue
             aid, t = e["object_id"], e["event_time"]
             later = [s for s in swaps.get(aid, []) if s[0] > t]
@@ -329,7 +347,7 @@ def blocked_ads(spent_ids):
             seen.add((aid, orig or "now"))
             found.append({"aid": aid, "name": e.get("object_name", ""), "t": t, "acc": acc["name"],
                           "orig": orig, "new": later[-1][2] if later else "",
-                          "was_live": str(e["x"].get("old_value", "")).lower() == "active"})
+                          "kind": kind, "was_live": was_active(e["x"])})
     if not found:
         return []
     cfields = "id,name,thumbnail_url,video_id,object_story_spec{video_data{video_id}}"
@@ -359,7 +377,7 @@ def blocked_ads(spent_ids):
         fb = ad.get("ad_review_feedback") or {}
         reason = "; ".join(f"{k}: {v}" for part in fb.values() if isinstance(part, dict) for k, v in part.items())
         same_video = bool(new) and vid_of(new) == vid_of(orig)
-        if fb or ad.get("effective_status") == "DISAPPROVED":
+        if fb or ad.get("effective_status") in ("DISAPPROVED", "WITH_ISSUES"):
             status = "Still blocked"
         elif new:
             status = "Text replaced" if same_video else "Replaced"
@@ -367,13 +385,14 @@ def blocked_ads(spent_ids):
             status = "Approved again"
         rows.append([f["aid"], name, key, editor_of(key), series_of(key, camp), camp, f["acc"], f["t"][:10],
                      o_thumb, status, n_thumb, n_title or re.sub(r"\s*\[.*$", "", re.sub(r"^CR\s+", "", new.get("name", ""))),
-                     reason, f["was_live"] or f["aid"] in spent_ids, music_of(key), format_of(key), match(key)])
-    print(f"blocked: {len(rows)} rejected originals since {since}", file=sys.stderr)
+                     reason, f["was_live"] or f["aid"] in spent_ids, music_of(key), format_of(key), match(key), f["kind"]])
+    print(f"blocked: {len(rows)} blocked originals since {since} "
+          f"({sum(r[-1] == 'Rejected' for r in rows)} rejected, {sum(r[-1] == 'With issues' for r in rows)} with issues)", file=sys.stderr)
     return rows
 
 
 BLOCKED_COLS = ["ad_id", "name", "creative", "editor", "series", "campaign", "account", "date", "thumb",
-                "status", "new_thumb", "new_name", "reason", "ran", "music", "format", "drive"]
+                "status", "new_thumb", "new_name", "reason", "ran", "music", "format", "drive", "kind"]
 
 
 def main():
