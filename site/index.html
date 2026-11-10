@@ -587,7 +587,7 @@ function renderAudience(){
   const whole = audAgg(false), sel = audAgg(true);
   const scope = [state.editor !== "All" ? state.editor : "", state.series !== "All" ? state.series : ""].filter(Boolean).join(" · ") || "All editors and series";
   const btn = (k, l) => `<button data-am="${k}" class="${state.audm === k ? "on" : ""}">${l}</button>`;
-  $("#aud").innerHTML = audCards(sel) +
+  $("#aud").innerHTML = `<div class="sub2" style="margin-top:14px;font-weight:600;color:var(--text)">Meta (Facebook) data only. Not the company dashboard.</div>` + audCards(sel) +
     `<h3>Who gets the money, and who buys</h3><div class="sub2">${esc(scope)} · ${esc(acc)} · ${wtxt}. Light bar = share of spend, dark bar = share of purchases. Dark longer than light: the group brings back more than it gets.</div>` + audPyramid(sel) +
     `<div class="hdr"><div><h3>By editor</h3><div class="sub2">Green: this group buys better from this editor than across the account. Red: worse. Striped: fewer than ${AUD_MIN} purchases. Click a row to see only that editor.</div></div><div class="seg">${btn("roas","ROAS")}${btn("cpa","Cost / purchase")}${btn("purch","Purchases")}</div></div>` +
     audHeat(sel, whole, r => r.ed, "ae", "Editor") +
