@@ -65,7 +65,7 @@ tr.go{cursor:pointer}
 #aud .pyr .age{text-align:center;font-weight:600;font-size:12px;color:var(--muted)}#aud .side{display:flex;flex-direction:column;gap:3px}#aud .side.l{align-items:flex-end;padding-left:44px}#aud .side.r{padding-right:44px}
 #aud .pb{height:11px;border-radius:3px;position:relative}#aud .pb span{position:absolute;top:-2px;font-size:11px;color:var(--muted);white-space:nowrap}
 #aud .side.l .pb span{right:calc(100% + 6px)}#aud .side.r .pb span{left:calc(100% + 6px)}
-#aud .legend{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:12px 14px}#aud .legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
+#aud .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:12px 14px}#aud .legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}
 #aud .hdr{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-right:14px}
 #aud .seg{display:inline-flex;background:var(--line);border-radius:9px;padding:3px}#aud .seg button{border:0;background:none;padding:6px 12px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:600;font-size:13px}#aud .seg button.on{background:var(--card,#fff);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 #aud table.hm{border-collapse:separate;border-spacing:3px}#aud table.hm td{text-align:center;border-radius:6px;border:0;padding:8px 6px}#aud table.hm td.l{text-align:left;font-weight:600}
@@ -121,7 +121,7 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
 <div id="app" class="wrap" hidden>
   <header>
     <img class="logo" src="icon.svg" alt="">
-    <div><h1>Gamma Creative Analytics</h1><div class="sub" id="updated"></div></div>
+    <div><h1>Gamma Creative Analytics</h1><div class="sub" id="updated"></div><div class="sub" style="font-weight:600">Meta (Facebook) data only. Not the company dashboard.</div></div>
     <div class="spacer"></div>
     <button class="btn" id="theme" title="Toggle theme">◐</button>
     <button class="btn primary" id="export">⬇ Export to Excel</button>
@@ -587,7 +587,7 @@ function renderAudience(){
   const whole = audAgg(false), sel = audAgg(true);
   const scope = [state.editor !== "All" ? state.editor : "", state.series !== "All" ? state.series : ""].filter(Boolean).join(" · ") || "All editors and series";
   const btn = (k, l) => `<button data-am="${k}" class="${state.audm === k ? "on" : ""}">${l}</button>`;
-  $("#aud").innerHTML = `<div class="sub2" style="margin-top:14px;font-weight:600;color:var(--text)">Meta (Facebook) data only. Not the company dashboard.</div>` + audCards(sel) +
+  $("#aud").innerHTML = audCards(sel) +
     `<h3>Who gets the money, and who buys</h3><div class="sub2">${esc(scope)} · ${esc(acc)} · ${wtxt}. Light bar = share of spend, dark bar = share of purchases. Dark longer than light: the group brings back more than it gets.</div>` + audPyramid(sel) +
     `<div class="hdr"><div><h3>By editor</h3><div class="sub2">Green: this group buys better from this editor than across the account. Red: worse. Striped: fewer than ${AUD_MIN} purchases. Click a row to see only that editor.</div></div><div class="seg">${btn("roas","ROAS")}${btn("cpa","Cost / purchase")}${btn("purch","Purchases")}</div></div>` +
     audHeat(sel, whole, r => r.ed, "ae", "Editor") +
