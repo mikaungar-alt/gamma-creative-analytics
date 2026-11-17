@@ -218,6 +218,12 @@
       "ad_name_patterns": [
         "forlove"
       ]
+    },
+    {
+      "title": "The Cowboy I Can't Quit",
+      "ad_name_patterns": [
+        "cowboy"
+      ]
     }
   ],
   "campaign_series_codes": {
@@ -246,7 +252,8 @@
     "GIRLFRIEND": "Be My Girlfriend, Gossip Queen",
     "ACCIDENTALLY": "Accidentally Engaged",
     "MRRIGHT": "Me and Mr. Right",
-    "FORLOVE": "What We Do For Love"
+    "FORLOVE": "What We Do For Love",
+    "COWBOY": "The Cowboy I Can't Quit"
   },
   "campaign_geos": [
     "US",
