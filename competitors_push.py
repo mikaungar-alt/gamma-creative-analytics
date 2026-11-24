@@ -19,8 +19,11 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 REPO = "https://github.com/mikaungar-alt/gamma-creative-analytics.git"
 HISTORY = os.path.expanduser("~/Library/Application Support/claude-work/socialpeta/competitors-history.json")
-FIELDS = ["app", "advertiser", "drama", "ai", "len", "text", "days", "last_seen", "impr", "video", "thumb"]
-META_FIELDS = ["app", "advertiser", "text", "versions", "started", "days", "thumb", "link"]  # Meta Ad Library (24.11)
+FIELDS = ["app", "advertiser", "drama", "ai", "len", "text", "days", "last_seen", "impr", "video", "thumb",
+          "company", "tier", "status", "dest", "range", "desc", "versions", "network", "language", "regions", "size",
+          "score_week", "score_total", "first_seen", "categories", "drama_creatives", "drama_ad_days"]
+META_FIELDS = ["app", "advertiser", "text", "versions", "started", "days", "thumb", "link",
+               "headline", "linkdesc", "cta", "domain", "copies", "pages"]  # Meta Ad Library (24.11)
 
 
 def main():

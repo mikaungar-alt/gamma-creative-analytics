@@ -186,12 +186,16 @@ def meta_scan(m):
             if a is None:
                 ads[key] = {"app": b, "advertiser": c["page"], "text": c["text"], "versions": c["versions"],
                             "started": st.isoformat(), "days": (today - st).days, "thumb": c["poster"],
-                            "link": f"https://www.facebook.com/ads/library/?id={c['id']}"}
+                            "link": f"https://www.facebook.com/ads/library/?id={c['id']}", "pages": {c["page"]},
+                            "headline": c.get("headline"), "linkdesc": c.get("linkdesc"), "cta": c.get("cta"),
+                            "domain": c.get("domain"), "copies": 1}
             else:
-                a["versions"] += c["versions"]
+                a["versions"] += c["versions"]; a["copies"] += 1; a["pages"].add(c["page"])
                 if (today - st).days > a["days"]:
                     a.update(started=st.isoformat(), days=(today - st).days)
         log(f"meta {b}: {len(cards)} cards")
+    for a in ads.values():
+        a["pages"] = len(a["pages"])  # how many different Pages run the same ad
     allads = sorted(ads.values(), key=lambda a: (-a["versions"], -a["days"]))
     new = sorted([a for a in ads.values() if a["days"] <= 2], key=lambda a: -a["versions"])
     return allads[:10], new[:10], len(ads)
@@ -215,7 +219,14 @@ def build(rows, sp_ai, verdicts):
                     "len": c[li] if li is not None else None, "text": " ".join(c[li + 1:cs]) if li is not None else "",
                     "days": int(dur) if dur else None, "last_seen": g("Last Seen"),
                     "impr": next((x.split(":", 1)[1] for x in c if x.startswith("Impression:")), m.get("impr")),
-                    "video": v, "thumb": m.get("poster")})
+                    "video": v, "thumb": m.get("poster"),
+                    # the rest of what the card and the Detail window show (Mika 24.11 18:25)
+                    "company": c[1] if len(c) > 1 else None, "tier": next((x for x in c if re.fullmatch(r"Top\d+%", x)), None),
+                    "status": next((x for x in c if x in ("New", "Re-delivery", "Continuous delivery", "Ended", "Banned")), None),
+                    "dest": next((x for x in c if re.fullmatch(r"(W2A|App|Web)[-\w ]*", x)), None),
+                    "range": next((x for x in c if re.fullmatch(r"\d{4}-\d\d-\d\d~\d{4}-\d\d-\d\d", x)), None),
+                    **{k: m.get(k) for k in ("desc", "versions", "network", "language", "regions", "size", "score_week",
+                                             "score_total", "first_seen", "categories", "drama_creatives", "drama_ad_days")}})
     return ads
 
 

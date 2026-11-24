@@ -72,7 +72,7 @@ tr.go{cursor:pointer}
 #aud table.hm th{text-align:center}#aud table.hm th.l{text-align:left}#aud table.hm tr[data-ae],#aud table.hm tr[data-as]{cursor:pointer}#aud table.hm tr[data-ae]:hover td.l,#aud table.hm tr[data-as]:hover td.l{color:var(--accent)}
 #aud td.hg{background:rgba(31,157,107,.16);color:#1f9d6b;font-weight:600}#aud td.hb{background:rgba(209,69,59,.14);color:#d1453b;font-weight:600}#aud td.hn{background:rgba(127,137,170,.10)}
 #aud td.thin{background:repeating-linear-gradient(45deg,rgba(127,137,170,.16),rgba(127,137,170,.16) 4px,transparent 4px,transparent 8px);color:var(--muted)}
-#comp h3{margin:18px 14px 6px;font-size:14px}#comp .sub2{margin:0 14px 8px;color:var(--muted);font-size:12px}#comp .tablewrap{max-height:none}#comp .days{display:flex;gap:6px;flex-wrap:wrap;margin:14px}#comp td.txt{max-width:420px;white-space:normal;font-size:12px}#comp a.play{font-weight:600;white-space:nowrap}#comp .pill.new{background:#16a34a;color:#fff;margin-right:4px}
+#comp h3{margin:18px 14px 6px;font-size:14px}#comp .sub2{margin:0 14px 8px;color:var(--muted);font-size:12px}#comp .tablewrap{max-height:none}#comp .days{display:flex;gap:6px;flex-wrap:wrap;margin:14px}#comp td.txt{min-width:260px;max-width:420px;white-space:normal;font-size:12px}#comp td.txt .muted{margin-top:4px;font-size:11px}#comp .tablewrap{overflow-x:auto}#comp a.play{font-weight:600;white-space:nowrap}#comp .pill.new{background:#16a34a;color:#fff;margin-right:4px}
 #aud tr.avg td{color:var(--muted);font-style:italic;background:none}
 #aud details{margin:10px 14px 14px}#aud summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px}#aud details h3{margin-left:0}#aud details .sub2{margin-left:0}
 @media (max-width:700px){#aud .acards{grid-template-columns:1fr}}#aud .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.55;margin-left:6px;vertical-align:middle}
@@ -525,22 +525,24 @@ function compStreak(days, d){
   return v => { let n = 0; for (let k = idx; k >= 0 && vids(sorted[k]).has(v); k--) n++; return {n, isNew: idx > 0 && n === 1}; };
 }
 function compTable(list, showAi, streak){
-  const head = ["#","Ad","Drama · App","Ad text","Length","Days running","Days on this list","Last seen","Impressions"].concat(showAi ? ["AI in SocialPeta"] : []);
+  const head = ["#","Ad","Drama · App","Ad text · Story","Length","Format","Days running","Days on this list","First seen","Last seen","Impressions","Score this week","Total score","Versions","Network","Countries","Language","Goes to","Drama: creatives","Drama: days advertised"].concat(showAi ? ["AI in SocialPeta"] : []);
   const body = list.map((a, i) => { const s = streak ? streak(a.video) : {n: 1, isNew: false}; return `<tr><td>${i + 1}</td>
     <td class="l">${s.isNew ? `<span class="pill new">New today</span> ` : ""}${thumbCell(a.thumb, a.advertiser || a.app, a.video ? `<a class="play" href="${esc(a.video)}" target="_blank" rel="noopener">▶ Watch the ad</a>` : '<span class="muted">No video link</span>')}</td>
-    <td class="l">${esc(a.drama || "–")}<div class="muted">${esc(a.app || "")}</div></td>
-    <td class="l txt">${esc(a.text || "")}</td><td>${esc(a.len || "–")}</td><td>${a.days != null ? fmtN(a.days) : "–"}</td><td>${s.n}</td><td>${esc(a.last_seen || "–")}</td><td>${esc(a.impr || "–")}</td>
+    <td class="l">${esc(a.drama || "–")}<div class="muted">${esc(a.app || "")}${a.company ? " · " + esc(a.company) : ""}</div>${a.tier || a.status ? `<div>${a.tier ? `<span class="pill n">${esc(a.tier)}</span> ` : ""}${a.status ? `<span class="pill ${a.status === "Banned" ? "b" : "n"}">${esc(a.status)}</span>` : ""}</div>` : ""}${a.categories ? `<div class="muted">${esc(a.categories)}</div>` : ""}</td>
+    <td class="l txt">${esc(a.text || "")}${a.desc ? `<div class="muted">${esc(a.desc)}</div>` : ""}</td><td>${esc(a.len || "–")}</td><td>${esc(a.size || "–")}</td><td>${a.days != null ? fmtN(a.days) : "–"}${a.range ? `<div class="muted">${esc(a.range)}</div>` : ""}</td><td>${s.n}</td><td>${esc(a.first_seen || "–")}</td><td>${esc(a.last_seen || "–")}</td><td>${esc(a.impr || "–")}</td>
+    <td>${esc(a.score_week || "–")}</td><td>${esc(a.score_total || "–")}</td><td>${esc(a.versions || "–")}</td><td>${esc(a.network || "–")}</td><td>${a.regions != null ? fmtN(a.regions) : "–"}</td><td>${esc(a.language || "–")}</td><td>${esc(a.dest || "–")}</td><td>${esc(a.drama_creatives || "–")}</td><td>${esc(a.drama_ad_days || "–")}</td>
     ${showAi ? `<td>${aiPill(a.ai)}</td>` : ""}</tr>`; }).join("");
   return `<div class="tablewrap"><table><thead><tr>${head.map((h, i) => `<th class="${i === 1 || i === 2 || i === 3 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="${head.length}" class="muted">Nothing this day.</td></tr>`}</tbody></table></div>`;
 }
 // Meta Ad Library (Mika 24.11 16:00): no impressions there, so: how many ads reuse the creative, then days running
 function metaTable(list){
-  const head = ["#","Ad","App · Page","Ad text","Ads using this creative","Days running","Started"];
+  const head = ["#","Ad","App · Page","Ad text","Headline · Link text","Button","Goes to","Ads using this creative","Pages running it","Days running","Started"];
   const body = list.map((a, i) => `<tr><td>${i + 1}</td>
     <td class="l">${thumbCell(a.thumb, a.advertiser || a.app, `<a class="play" href="${esc(a.link)}" target="_blank" rel="noopener">▶ Watch in Meta Ad Library</a>`)}</td>
     <td class="l">${esc(a.app || "")}<div class="muted">${esc(a.advertiser || "")}</div></td>
-    <td class="l txt">${esc(a.text || "")}</td><td>${fmtN(a.versions || 1)}</td><td>${a.days != null ? fmtN(a.days) : "–"}</td><td>${esc(a.started || "–")}</td></tr>`).join("");
-  return `<div class="tablewrap"><table><thead><tr>${head.map((h, i) => `<th class="${i >= 1 && i <= 3 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="${head.length}" class="muted">Nothing this day.</td></tr>`}</tbody></table></div>`;
+    <td class="l txt">${esc(a.text || "")}</td><td class="l txt">${esc(a.headline || "–")}${a.linkdesc ? `<div class="muted">${esc(a.linkdesc)}</div>` : ""}</td><td>${esc(a.cta || "–")}</td><td>${esc(a.domain || "–")}</td>
+    <td>${fmtN(a.versions || 1)}</td><td>${a.pages != null ? fmtN(a.pages) : "–"}</td><td>${a.days != null ? fmtN(a.days) : "–"}</td><td>${esc(a.started || "–")}</td></tr>`).join("");
+  return `<div class="tablewrap"><table><thead><tr>${head.map((h, i) => `<th class="${i >= 1 && i <= 4 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="${head.length}" class="muted">Nothing this day.</td></tr>`}</tbody></table></div>`;
 }
 function renderCompetitors(){
   $("#note").textContent = ""; $("#count").textContent = "";
