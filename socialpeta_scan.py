@@ -176,7 +176,7 @@ def chrome_running():
 def main():
     os.makedirs(WORK, exist_ok=True)
     today = datetime.date.today().isoformat()
-    # Mika 24.11 15:35: "07:30 בבוקר כפיר עוד לא ער לרוב". launchd tries every 30 minutes;
+    # Mika 24.11 15:41: "לא עדיף פשוט ב10?". launchd fires at 10:00, retries 11:00 and 12:00 (on wake if asleep);
     # the scan runs once, on the first try of the day when Kfir is awake and Chrome is open.
     done = os.path.join(WORK, f".done-{today}")
     if os.path.exists(done) or not chrome_running():
