@@ -493,6 +493,7 @@ def main():
                     first(r.get("video_thruplay_watched_actions")),
                     round(first(r.get("video_avg_time_watched_actions")) * plays, 1),
                     plays,
+                    act(r.get("actions"), "video_view"),  # 3-second views, for Hook rate (Mikita via Mika 24.11)
                 ])
                 n += 1
             s = e + dt.timedelta(days=1)
