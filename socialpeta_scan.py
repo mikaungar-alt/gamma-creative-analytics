@@ -168,9 +168,21 @@ def build(rows, sp_ai, verdicts):
     return ads
 
 
+def chrome_running():
+    r = subprocess.run(["pgrep", "-x", "Google Chrome"], capture_output=True)
+    return r.returncode == 0
+
+
 def main():
     os.makedirs(WORK, exist_ok=True)
     today = datetime.date.today().isoformat()
+    # Mika 24.11 15:35: "07:30 בבוקר כפיר עוד לא ער לרוב". launchd tries every 30 minutes;
+    # the scan runs once, on the first try of the day when Kfir is awake and Chrome is open.
+    done = os.path.join(WORK, f".done-{today}")
+    if os.path.exists(done) or not chrome_running():
+        return
+    if not (8 <= datetime.datetime.now().hour < 19):
+        return
     vpath = os.path.join(WORK, "mika-ai-verdicts.json")
     verdicts = json.load(open(vpath)) if os.path.exists(vpath) else {"AI": [], "Real": []}
     t = c = None
@@ -209,14 +221,19 @@ def main():
         out = subprocess.run(["/usr/bin/python3", os.path.join(ROOT, "competitors_push.py"), path],
                              env=env, capture_output=True, text=True, check=True).stdout.strip()
         log(f"ok: {len(ads)} ads, notai={len(notai)}, to check={len(pending)} · {out}")
+        open(done, "w").write(out)
     except Exception as e:
         log("FAILED: " + "".join(traceback.format_exception_only(type(e), e)).strip())
+        mailed = os.path.join(WORK, f".mailed-{today}")
+        if os.path.exists(mailed):
+            sys.exit(1)  # one mail a day; the next half-hour try may still succeed
+        open(mailed, "w").write("1")
         try:
             from importlib import util
             spec = util.spec_from_file_location("gw", os.path.expanduser("~/.claude/tools/gca-watch.py"))
             gw = util.module_from_spec(spec); spec.loader.exec_module(gw)
             gw.send("🕵️ Competitors לא התעדכן היום",
-                    "הסריקה של סושיאל פיטה לא הצליחה הבוקר, ולכן בלשונית Competitors נשארו הרשימות של היום הקודם.\n\n"
+                    "הסריקה של סושיאל פיטה לא הצליחה הבוקר, ולכן בלשונית Competitors נשארו בינתיים הרשימות של היום הקודם. הסקריפט ינסה שוב כל חצי שעה עד 19:00.\n\n"
                     f"הסיבה, כפי שהסקריפט ראה אותה:\n{e}\n\nהלוג: ~/Library/Logs/sp-competitors.log")
         except Exception as m:
             log("mail failed too: " + str(m))
