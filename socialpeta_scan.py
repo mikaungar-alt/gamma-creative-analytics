@@ -24,6 +24,12 @@ LOG = os.path.expanduser("~/Library/Logs/sp-competitors.log")
 PAGES = int(os.environ.get("SP_PAGES", "3"))
 LIST_URL = "https://socialpeta.com/modules/drama/creative"
 CHART_URL = "https://socialpeta.com/modules/drama/charts"
+# Meta Ad Library (Mika 24.11 16:00: "תן לי את שניהם גם מטא וגם סושיאל פיטה"). Meta's API gives no US
+# commercial ads, so the public site is read in a background tab, like SocialPeta. Meta shows no impressions:
+# rank = how many ads reuse the creative (advertisers copy winners), then how long it has been running.
+META_BRANDS = ["NetShort", "iDrama", "ReelShort", "DramaBox", "ShortMax", "GoodShort", "DramaWave", "FlexTV"]
+META_URL = ("https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US"
+            "&content_languages[0]=en&media_type=video&search_type=keyword_exact_phrase&q=%22{q}%22")
 sys.path.insert(0, os.path.expanduser("~/.claude/tools"))
 
 
@@ -33,7 +39,11 @@ def log(s):
 
 
 def osa(script, *args):
-    r = subprocess.run(["osascript", "-e", script, *args], capture_output=True, text=True, timeout=120)
+    for _ in range(3):  # a window opened or closed mid-loop ("Invalid index") is worth another try
+        r = subprocess.run(["osascript", "-e", script, *args], capture_output=True, text=True, timeout=120)
+        if not (r.returncode and "Invalid index" in r.stderr):
+            break
+        time.sleep(2)
     if r.returncode:
         raise RuntimeError("osascript: " + r.stderr.strip()[:300])
     return r.stdout.strip()
@@ -146,6 +156,47 @@ def ai_tags(c, dramas):
     return out
 
 
+def set_url(tid, url):
+    osa(f'''tell application "Google Chrome"
+      repeat with w in windows
+        repeat with x in tabs of w
+          if (id of x as text) is "{tid}" then set URL of x to "{url}"
+        end repeat
+      end repeat
+    end tell''')
+
+
+def meta_scan(m):
+    today, ads, seen_ids = datetime.date.today(), {}, set()
+    for b in META_BRANDS:
+        set_url(m, META_URL.format(q=b)); time.sleep(12)
+        for _ in range(4):
+            run(m, "ml_scroll.js"); time.sleep(4)
+        cards = json.loads(run(m, "ml_cards.js") or "[]")
+        for c in cards:
+            if not c["active"] or not c["started"] or b.lower() not in (c["text"] + " " + (c["page"] or "")).lower():
+                continue
+            st = datetime.datetime.strptime(c["started"], "%b %d, %Y").date()
+            # same app + same ad text = one ad; its copies add up, and it is as old as its oldest copy
+            key = (b, " ".join(c["text"].lower().split()))
+            if c["id"] in seen_ids:
+                continue
+            seen_ids.add(c["id"])
+            a = ads.get(key)
+            if a is None:
+                ads[key] = {"app": b, "advertiser": c["page"], "text": c["text"], "versions": c["versions"],
+                            "started": st.isoformat(), "days": (today - st).days, "thumb": c["poster"],
+                            "link": f"https://www.facebook.com/ads/library/?id={c['id']}"}
+            else:
+                a["versions"] += c["versions"]
+                if (today - st).days > a["days"]:
+                    a.update(started=st.isoformat(), days=(today - st).days)
+        log(f"meta {b}: {len(cards)} cards")
+    allads = sorted(ads.values(), key=lambda a: (-a["versions"], -a["days"]))
+    new = sorted([a for a in ads.values() if a["days"] <= 2], key=lambda a: -a["versions"])
+    return allads[:10], new[:10], len(ads)
+
+
 def build(rows, sp_ai, verdicts):
     seen, ads = set(), []
     for r in sorted(rows, key=lambda r: (r["p"], r["i"])):
@@ -185,7 +236,7 @@ def main():
         return
     vpath = os.path.join(WORK, "mika-ai-verdicts.json")
     verdicts = json.load(open(vpath)) if os.path.exists(vpath) else {"AI": [], "Real": []}
-    t = c = None
+    t = c = m = None
     try:
         t = open_tab(LIST_URL); time.sleep(12)
         body = run(t, "sel.js")
@@ -209,7 +260,13 @@ def main():
         json.dump({"date": today, "dramas": [{"drama": d, **next({"thumb": a["thumb"], "video": a["video"], "app": a["app"]}
                    for a in ads if a["drama"] == d)} for d in pending]},
                   open(os.path.join(WORK, "pending-check.json"), "w"), ensure_ascii=False, indent=1)
-        day = {"date": today, "top": top, "notai": notai,
+        meta_top, meta_new, meta_n = [], [], 0
+        try:  # Meta failing must not cost the SocialPeta lists
+            m = open_tab(META_URL.format(q=META_BRANDS[0])); time.sleep(3)
+            meta_top, meta_new, meta_n = meta_scan(m)
+        except Exception as e:
+            log("meta FAILED: " + str(e)[:300])
+        day = {"date": today, "top": top, "notai": notai, "meta_top": meta_top, "meta_new": meta_new,
                "filter": "United States · English · Meta and TikTok · Top 1% and 10% creatives · last 30 days · "
                          "sorted by impressions · same video counted once."}
         path = os.path.join(WORK, f"{today}.json")
@@ -220,7 +277,7 @@ def main():
                 env["GCA_DASH_PASSWORD"] = line.split("=", 1)[1].strip().strip('"').strip("'")
         out = subprocess.run(["/usr/bin/python3", os.path.join(ROOT, "competitors_push.py"), path],
                              env=env, capture_output=True, text=True, check=True).stdout.strip()
-        log(f"ok: {len(ads)} ads, notai={len(notai)}, to check={len(pending)} · {out}")
+        log(f"ok: {len(ads)} ads, notai={len(notai)}, to check={len(pending)}, meta={meta_n} · {out}")
         open(done, "w").write(out)
     except Exception as e:
         log("FAILED: " + "".join(traceback.format_exception_only(type(e), e)).strip())
@@ -239,7 +296,7 @@ def main():
             log("mail failed too: " + str(m))
         sys.exit(1)
     finally:
-        for tab in (t, c):
+        for tab in (t, c, m):
             if tab:
                 try:
                     close_tab(tab)

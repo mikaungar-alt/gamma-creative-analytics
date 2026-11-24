@@ -20,6 +20,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 REPO = "https://github.com/mikaungar-alt/gamma-creative-analytics.git"
 HISTORY = os.path.expanduser("~/Library/Application Support/claude-work/socialpeta/competitors-history.json")
 FIELDS = ["app", "advertiser", "drama", "ai", "len", "text", "days", "last_seen", "impr", "video", "thumb"]
+META_FIELDS = ["app", "advertiser", "text", "versions", "started", "days", "thumb", "link"]  # Meta Ad Library (24.11)
 
 
 def main():
@@ -27,6 +28,8 @@ def main():
     assert len(day["date"]) == 10 and day.get("top"), "need a date and a non-empty top list"
     for k in ("top", "notai"):
         day[k] = [{f: a.get(f) for f in FIELDS} for a in day.get(k, [])][:10]
+    for k in ("meta_top", "meta_new"):
+        day[k] = [{f: a.get(f) for f in META_FIELDS} for a in day.get(k, [])][:10]
     hist = json.load(open(HISTORY)) if os.path.exists(HISTORY) else {"days": []}
     hist["days"] = [d for d in hist["days"] if d["date"] != day["date"]] + [day]
     hist["days"].sort(key=lambda d: d["date"])
