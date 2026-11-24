@@ -4,6 +4,10 @@ on:
     - cron: "0 8 * * *"    # every morning, 10:00 Israel winter time (11:00 in summer)
     - cron: "0 10 * * *"   # backup two hours later, in case GitHub skips the first
   workflow_dispatch:
+    inputs:
+      days:
+        description: "How many days to pull from Meta"
+        default: "90"
   push:
     branches: [main]
 permissions:
@@ -42,7 +46,7 @@ jobs:
           META_TOKEN: ${{ secrets.META_TOKEN }}
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
           DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
-          DAYS: "90"
+          DAYS: ${{ inputs.days || '90' }}
         run: python -u fetch.py
       # A push reuses the live numbers: only redo the Drive links (a minute, not a Meta pull)
       - name: Redo the Drive links
