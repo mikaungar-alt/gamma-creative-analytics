@@ -1,0 +1,1 @@
+(function(){var s=document.querySelectorAll("span.text-sm");for(var i=0;i<s.length;i++){if((s[i].innerText||"").trim()==="Impression"){s[i].parentElement.click();return "sorted";}}return "no sort";})()

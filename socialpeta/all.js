@@ -1,0 +1,1 @@
+(function(){var r=[].slice.call(document.querySelectorAll("label.ant-radio-button-wrapper,label.ant-radio-wrapper")).filter(function(l){return l.textContent.trim()==="All"});r.forEach(function(l){var p=l.parentElement.innerText;if(p.indexOf("Daily")>=0&&l.className.indexOf("checked")<0)l.click()});return r.length})()

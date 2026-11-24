@@ -1,0 +1,1 @@
+(function(){var c=document.querySelectorAll("div.p-3.pt-1")[window.__I__||0].parentElement;var b=[].slice.call(c.querySelectorAll("button")).filter(function(x){return x.textContent.trim()==="Detail"})[0];if(!b)return "no btn";b.click();return "clicked detail"})()

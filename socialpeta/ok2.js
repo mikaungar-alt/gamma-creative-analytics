@@ -1,0 +1,1 @@
+(function(){var w=window.__W__;var bs=[].slice.call(document.querySelectorAll("button")).filter(function(x){return x.offsetParent&&x.textContent.trim()==="OK"});var t=bs.filter(function(x){var p=x.closest(".ant-popover,.ant-dropdown,[class*=popover]");return p&&p.innerText.indexOf(w)>=0});if(t.length)t[0].click();return "ok clicked="+t.length})()

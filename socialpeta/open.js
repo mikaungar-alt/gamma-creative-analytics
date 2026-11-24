@@ -1,0 +1,1 @@
+(function(){var ph=window.__PH__;var i=document.querySelector('input[placeholder="'+ph+'"]');if(!i)return "no input "+ph;["mouseover","mousedown","focus","mouseup","click"].forEach(function(e){i.dispatchEvent(new MouseEvent(e,{bubbles:true}))});i.focus();return "opened "+ph})()

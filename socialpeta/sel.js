@@ -1,0 +1,1 @@
+(function(){var t=document.body.innerText.split("\n").map(function(s){return s.trim()}).filter(Boolean);var i=t.indexOf("Selected");return location.href+" || "+(i<0?"NO SELECTED: "+t.slice(0,15).join(" / "):t.slice(i,i+10).join(" / "))+" || "+(document.body.innerText.match(/[\d.]+[KM]? ads found/)||[""])[0]+" || expired:"+(document.body.innerText.indexOf("expired")>=0)})()
