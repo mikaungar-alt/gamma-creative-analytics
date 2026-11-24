@@ -516,7 +516,7 @@ async function loadComp(){
   catch(e){ console.error("competitors", e); COMP = {days:[]}; }
   if (state.tab === "competitors") renderTable();
 }
-const aiPill = v => `<span class="pill ${v === "AI" ? "b" : v === "Real actors" ? "g" : "n"}">${esc(v || "Not labeled")}</span>`;
+const aiPill = v => v === "AI" ? `<span class="pill b">AI</span>` : `<span class="pill n">Not labeled as AI</span>`; // SocialPeta shows only the AI Cast tag, so "real actors" cannot be told apart from untagged
 function compTable(list, showAi){
   const head = ["#","Ad","Drama · App","Ad text","Length","Days running","Last seen","Impressions"].concat(showAi ? ["AI in SocialPeta"] : []);
   const body = list.map((a, i) => `<tr><td>${i + 1}</td>
