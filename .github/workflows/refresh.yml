@@ -8,9 +8,16 @@ on:
       days:
         description: "How many days to pull from Meta"
         default: "90"
+      merge:
+        description: "1 = keep the live data and replace only the pulled days"
+        default: "0"
+      retry:
+        description: "How many times this run was already retried (set by the run itself)"
+        default: "0"
   push:
     branches: [main]
 permissions:
+  actions: write
   contents: read
   pages: write
   id-token: write
@@ -36,6 +43,9 @@ jobs:
         if: github.event_name == 'push'
         continue-on-error: true
         run: curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc" && python -c "import json;d=json.load(open('site/data.enc'));assert d['ct']"
+      - name: Get the live data to merge into
+        if: inputs.merge == '1'
+        run: curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc"
       # Kfir pushes the encrypted file name -> Drive link map to the drive-map branch every morning
       - name: Get the Drive map
         continue-on-error: true
@@ -47,6 +57,7 @@ jobs:
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
           DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
           DAYS: ${{ inputs.days || '90' }}
+          MERGE: ${{ inputs.merge || '0' }}
         run: python -u fetch.py
       # A push reuses the live numbers: only redo the Drive links (a minute, not a Meta pull)
       - name: Redo the Drive links
@@ -69,3 +80,13 @@ jobs:
       - id: deploy2
         if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@v4
+      # Mika 24.11: a failure starts a new attempt at once (up to 2), and Kfir mails her
+      - name: Start a new attempt
+        if: failure() && github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          R=$(( ${{ inputs.retry || '0' }} + 1 ))
+          if [ $R -le 2 ]; then
+            gh workflow run "Refresh data" -R ${{ github.repository }} -f days=${{ inputs.days || '90' }} -f merge=${{ inputs.merge || '0' }} -f retry=$R
+          fi

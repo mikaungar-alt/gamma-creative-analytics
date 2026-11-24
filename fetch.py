@@ -511,6 +511,36 @@ def main():
     print(f"drive links: {sum(1 for v in links.values() if v)} of {len(links)} creatives", file=sys.stderr)
     print("no drive link:", " | ".join(k for k, v in links.items() if not v), file=sys.stderr)
 
+    old_aud = {}
+    if os.environ.get("MERGE") == "1":
+        # Mika 24.11: "אל תמחק את הקודמים, תביא עדכון ל-7 ימים האחרונים ואת השאר תשאיר".
+        # Fresh days replace the same days in the live file; older days stay; window stays 90 days.
+        old = open_live()
+        ocols = old["ad_cols"]
+        assert ocols == ["name", "creative", "editor", "series", "campaign", "account", "thumb", "id",
+                         "music", "format", "ratio", "drive"], ocols
+        final_since = until - dt.timedelta(days=89)
+        osince = dt.date.fromisoformat(old["since"])
+        pos = {a[7]: i for i, a in enumerate(ad_list)}
+        remap = {}
+        for i, a in enumerate(old["ads"]):
+            if a[7] not in pos:
+                pos[a[7]] = len(ad_list)
+                ad_list.append(a)
+            remap[i] = pos[a[7]]
+        kept = []
+        for r in old["rows"]:
+            d = osince + dt.timedelta(days=r[0])
+            if final_since <= d < since:
+                kept.append([(d - final_since).days, remap[r[1]]] + r[2:])
+        shift = (since - final_since).days
+        for r in rows:
+            r[0] += shift
+        print(f"merge: kept {len(kept)} old rows before {since}, {len(rows)} fresh rows", file=sys.stderr)
+        rows = kept + rows
+        since = final_since
+        old_aud = {k: v for k, v in old.items() if k.startswith("aud")}
+
     payload = {
         "generated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         "since": since.isoformat(), "until": until.isoformat(),
@@ -520,11 +550,11 @@ def main():
                      "p100", "thru", "watch_sum", "plays"],
         "editors": [e["name"] for e in CONFIG["editors"]] + [CONFIG["default_editor"]],
         "ads": ad_list, "rows": rows,
-        "blocked_cols": BLOCKED_COLS, "blocked": blocked_ads(set(ads.keys())),
+        "blocked_cols": BLOCKED_COLS, "blocked": blocked_ads({a[7] for a in ad_list}),
         "blocked_since": CONFIG.get("blocked_since", "2026-11-09"),
     }
     try:  # the Audience tab is extra: if Meta fails on it, the rest of the page still updates
-        payload.update(audience(accounts, until))
+        payload.update(old_aud or audience(accounts, until))  # a merge keeps yesterday's audience tab
     except Exception as e:
         print(f"audience skipped: {e}", file=sys.stderr)
     raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
@@ -536,6 +566,12 @@ def main():
         json.dump({"v": 1, "iter": 250000, "salt": base64.b64encode(salt).decode(),
                    "iv": base64.b64encode(iv).decode(), "ct": base64.b64encode(ct).decode()}, f)
     print(f"ads={len(ad_list)} rows={len(rows)} gz={len(raw)//1024}KB", file=sys.stderr)
+
+
+def open_live():
+    d = json.load(open(os.path.join(ROOT, "site", "data.enc")))
+    key = PBKDF2HMAC(hashes.SHA256(), 32, base64.b64decode(d["salt"]), d["iter"]).derive(PASSWORD.encode())
+    return json.loads(gzip.decompress(AESGCM(key).decrypt(base64.b64decode(d["iv"]), base64.b64decode(d["ct"]), None)))
 
 
 def relink():
