@@ -72,6 +72,7 @@ tr.go{cursor:pointer}
 #aud table.hm th{text-align:center}#aud table.hm th.l{text-align:left}#aud table.hm tr[data-ae],#aud table.hm tr[data-as]{cursor:pointer}#aud table.hm tr[data-ae]:hover td.l,#aud table.hm tr[data-as]:hover td.l{color:var(--accent)}
 #aud td.hg{background:rgba(31,157,107,.16);color:#1f9d6b;font-weight:600}#aud td.hb{background:rgba(209,69,59,.14);color:#d1453b;font-weight:600}#aud td.hn{background:rgba(127,137,170,.10)}
 #aud td.thin{background:repeating-linear-gradient(45deg,rgba(127,137,170,.16),rgba(127,137,170,.16) 4px,transparent 4px,transparent 8px);color:var(--muted)}
+#comp h3{margin:18px 14px 6px;font-size:14px}#comp .sub2{margin:0 14px 8px;color:var(--muted);font-size:12px}#comp .tablewrap{max-height:none}#comp .days{display:flex;gap:6px;flex-wrap:wrap;margin:14px}#comp td.txt{max-width:420px;white-space:normal;font-size:12px}#comp a.play{font-weight:600;white-space:nowrap}
 #aud tr.avg td{color:var(--muted);font-style:italic;background:none}
 #aud details{margin:10px 14px 14px}#aud summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px}#aud details h3{margin-left:0}#aud details .sub2{margin-left:0}
 @media (max-width:700px){#aud .acards{grid-template-columns:1fr}}#aud .bar{display:inline-block;height:6px;border-radius:3px;background:var(--accent);opacity:.55;margin-left:6px;vertical-align:middle}
@@ -149,6 +150,7 @@ td.name{min-width:380px;max-width:500px;white-space:normal}
     </div>
     <div class="tablewrap" id="tblwrap"><table id="tbl"></table></div>
     <div id="aud" hidden></div>
+    <div id="comp" hidden></div>
     <div class="more" id="morewrap" hidden><button class="btn" id="more">Show more</button></div>
     <div class="note" id="note"></div>
   </section>
@@ -172,7 +174,15 @@ $("#theme").onclick = () => {
 // ---------- decrypt ----------
 const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
 let ENC;
+let PW = null;
+async function openEnc(enc, pw){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt:b64(enc.salt), iterations:enc.iter, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
+  const plain = await crypto.subtle.decrypt({name:"AES-GCM", iv:b64(enc.iv)}, key, b64(enc.ct));
+  return JSON.parse(await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream("gzip"))).text());
+}
 async function unlock(pw){
+  PW = pw;
   if (!ENC) ENC = await (await fetch("data.enc?" + Date.now())).json();
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
   const key = await crypto.subtle.deriveKey({name:"PBKDF2", salt:b64(ENC.salt), iterations:ENC.iter, hash:"SHA-256"}, base, {name:"AES-GCM", length:256}, false, ["decrypt"]);
@@ -284,7 +294,7 @@ function buildFilters(){
   $("#aud").onclick = e => { const b = e.target.closest("[data-am]"); if (b) { state.audm = b.dataset.am; return renderTable(); }
     const tr = e.target.closest("tr[data-ae]"); if (tr) { state.editor = tr.dataset.ae; render(); window.scrollTo({top:0, behavior:"smooth"}); return; }
     const ts = e.target.closest("tr[data-as]"); if (ts) { state.series = ts.dataset.as; render(); window.scrollTo({top:0, behavior:"smooth"}); } };
-  const tabs = [["creatives","Creatives"],["blocked","Blocked"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["audience","Audience"],["campaigns","Campaigns"]];
+  const tabs = [["creatives","Creatives"],["blocked","Blocked"],["series","By series"],["weekly","Weekly trend"],["music","Music"],["format","Format"],["naming","Naming"],["audience","Audience"],["campaigns","Campaigns"],["competitors","Competitors"]];
   $("#tabs").innerHTML = tabs.map(([k, l]) => `<button class="tab" data-t="${k}">${l}</button>`).join("");
   $("#tabs").onclick = e => { const b = e.target.closest("[data-t]"); if (!b) return; state.tab = b.dataset.t; state.sort = b.dataset.t === "blocked" ? {key:"date", dir:-1} : {key:"spend", dir:-1}; state.limit = 150; render(); };
   $("#more").onclick = () => { state.limit += 300; renderTable(); };
@@ -468,7 +478,8 @@ function weekly(){
   return out;
 }
 function renderTable(){
-  const au = state.tab === "audience"; $("#tblwrap").hidden = au; $("#aud").hidden = !au; $("#q").hidden = au;
+  const cp = state.tab === "competitors", au = state.tab === "audience"; $("#tblwrap").hidden = au || cp; $("#aud").hidden = !au; $("#comp").hidden = !cp; $("#q").hidden = au || cp;
+  if (cp) { $("#testedwrap").hidden = $("#neverwrap").hidden = $("#dimwrap").hidden = $("#morewrap").hidden = true; return renderCompetitors(); }
   if (au) { $("#testedwrap").hidden = $("#neverwrap").hidden = $("#dimwrap").hidden = $("#morewrap").hidden = true; return renderAudience(); }
   $("#dimwrap").hidden = state.tab !== "naming";
   $("#neverwrap").hidden = state.tab !== "blocked"; $("#testedwrap").hidden = state.tab === "blocked";
@@ -493,6 +504,40 @@ function renderTable(){
     : state.tab === "series" ? "Totals for the creatives that match the current filters. Click a series to see its creatives."
     : state.tab === "naming" ? "Reads the editors' naming convention from the file name: SERIES_EDITOR_BATCH_AD_duration_edit_inserts_graphics_cta_voiceover_mx###. Files with an editor code count as the new naming even if a code is not in the dictionary yet (shown as “Not in dictionary: …”) or a field is missing. Files with no editor code show as “Named before the convention”."
     : "Totals for the creatives that match the current filters.";
+}
+
+// ---------- competitors: top ads from SocialPeta (Mika 24.11) ----------
+// SocialPeta has no API and opens only in Mika's Chrome on Kfir, so Kfir pushes competitors.enc to the
+// competitors branch every morning; the page reads it straight from there. Starts 24.11, no history before.
+const COMP_URL = "https://raw.githubusercontent.com/mikaungar-alt/gamma-creative-analytics/competitors/competitors.enc";
+let COMP;
+async function loadComp(){
+  try { COMP = await openEnc(await (await fetch(COMP_URL + "?" + Date.now())).json(), PW); }
+  catch(e){ console.error("competitors", e); COMP = {days:[]}; }
+  if (state.tab === "competitors") renderTable();
+}
+const aiPill = v => `<span class="pill ${v === "AI" ? "b" : v === "Real actors" ? "g" : "n"}">${esc(v || "Not labeled")}</span>`;
+function compTable(list, showAi){
+  const head = ["#","Ad","Drama · App","Ad text","Length","Days running","Last seen","Impressions"].concat(showAi ? ["AI in SocialPeta"] : []);
+  const body = list.map((a, i) => `<tr><td>${i + 1}</td>
+    <td class="l">${thumbCell(a.thumb, a.advertiser || a.app, a.video ? `<a class="play" href="${esc(a.video)}" target="_blank" rel="noopener">▶ Watch the ad</a>` : '<span class="muted">No video link</span>')}</td>
+    <td class="l">${esc(a.drama || "–")}<div class="muted">${esc(a.app || "")}</div></td>
+    <td class="l txt">${esc(a.text || "")}</td><td>${esc(a.len || "–")}</td><td>${a.days != null ? fmtN(a.days) : "–"}</td><td>${esc(a.last_seen || "–")}</td><td>${esc(a.impr || "–")}</td>
+    ${showAi ? `<td>${aiPill(a.ai)}</td>` : ""}</tr>`).join("");
+  return `<div class="tablewrap"><table><thead><tr>${head.map((h, i) => `<th class="${i === 1 || i === 2 || i === 3 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="${head.length}" class="muted">Nothing this day.</td></tr>`}</tbody></table></div>`;
+}
+function renderCompetitors(){
+  $("#note").textContent = ""; $("#count").textContent = "";
+  if (!COMP) { $("#comp").innerHTML = `<div class="note" style="padding:30px">Opening…</div>`; return loadComp(); }
+  const days = [...(COMP.days || [])].sort((a, b) => b.date.localeCompare(a.date));
+  if (!days.length) { $("#comp").innerHTML = `<div class="note" style="padding:30px">The first SocialPeta lists arrive with the next morning update.</div>`; return; }
+  if (!days.some(d => d.date === state.compDay)) state.compDay = days[0].date;
+  const d = days.find(x => x.date === state.compDay);
+  $("#comp").innerHTML = `<div class="days">${days.map(x => `<button class="chip${x.date === d.date ? " on" : ""}" data-cd="${esc(x.date)}">${esc(x.date)}</button>`).join("")}</div>` +
+    `<h3>Top 10</h3><div class="sub2">The ten leading competitor ads in SocialPeta on ${esc(d.date)}. ${esc(d.filter || "")}</div>` + compTable(d.top || [], true) +
+    `<h3>Top 10 · Not labeled as AI in SocialPeta</h3><div class="sub2">The ten leading ads whose drama SocialPeta has not tagged “AI Cast”. SocialPeta tags dramas, not ads, and leaves many dramas untagged, so a drama on this list can still be AI.</div>` + compTable(d.notai || [], true) +
+    `<div class="note" style="padding-top:12px">From SocialPeta, updated every morning. The editor, series and date filters above do not apply to this tab. “Days running” = how long the ad has been live; an advertiser does not keep a losing ad running for months.</div>`;
+  $("#comp").onclick = e => { const b = e.target.closest("[data-cd]"); if (b) { state.compDay = b.dataset.cd; renderCompetitors(); } };
 }
 
 // ---------- audience: age x gender from Meta, per editor and per series (Mika 9.11) ----------
