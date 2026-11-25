@@ -121,28 +121,82 @@ def set_filters(t):
         raise RuntimeError("filters did not hold: " + ", ".join(miss) + " | " + sel[:300])
 
 
+def card_key(c):
+    """Same ad from another ad account: same app, length, text, dates and numbers. Its Detail window is the same."""
+    g = lambda pat: next((x for x in c if re.fullmatch(pat, x)), None)
+    li = next((k for k, x in enumerate(c) if re.fullmatch(r"(\d+m )?\d+s", x)), None)
+    cs = c.index("Creative Score") if "Creative Score" in c else len(c)
+    return json.dumps([c[0] if c else None, g(r"\d{4}-\d\d-\d\d~\d{4}-\d\d-\d\d"), c[li] if li is not None else None,
+                       " ".join(c[li + 1:cs]) if li is not None else "", g(r"Impression:.*"), g(r"\d+ Days")])
+
+
+def page_cards(t):
+    """Cards on the current page. Under load SocialPeta takes long to fill a page (25.11: pages 5-6 came back
+    empty after 16s), so wait up to a minute, then nudge it with back-and-forward once."""
+    v = wait_for(lambda: run(t, "cards_count.js"), lambda v: v.isdigit() and int(v) > 0, tries=20, gap=3)
+    if not (v.isdigit() and int(v) > 0):
+        run(t, "prev.js"); time.sleep(10); run(t, "next.js")
+        v = wait_for(lambda: run(t, "cards_count.js"), lambda v: v.isdigit() and int(v) > 0, tries=20, gap=3)
+    return int(v) if v.isdigit() else 0
+
+
+def read_card(t, i, n):
+    """25.11 16:48: right after a page turn the list re-renders, and a card read in that moment came back empty."""
+    for _ in range(6):
+        v = run(t, "card.js", I=i)
+        try:
+            return json.loads(v)
+        except ValueError:
+            time.sleep(5)
+    return None
+
+
+def read_detail(t, i):
+    """One card's Detail window. 25.11 the window loaded slowly from card 200 on and the scan gave up after 10s,
+    so 40 cards came back empty. Now: up to 30s per try, and a pause before each retry to let SocialPeta breathe."""
+    for k in range(3):
+        run(t, "det.js", I=i)
+        m = json.loads(wait_for(lambda: run(t, "one.js"), lambda v: '"video":"http' in v, tries=15) or "{}")
+        run(t, "close.js"); time.sleep(1.5)
+        if m.get("video"):
+            return m
+        time.sleep(20 * (k + 1))
+    return m
+
+
 def scan_list(t):
-    rows = []
+    rows, cache, misses = [], {}, 0
     for page in range(1, PAGES + 1):
         if page > 1:
             if run(t, "next.js") != "next":
                 break
-            time.sleep(7)
-        n = int(wait_for(lambda: run(t, "cards_count.js"), lambda v: v.isdigit() and int(v) > 0, tries=8))
+            wait_for(lambda: run(t, "active_page.js"), lambda v: v == str(page), tries=20, gap=3)
+            time.sleep(5)
+        n = page_cards(t)
+        if not n:
+            log(f"page {page}: no cards after waiting, stopping here")
+            break
         for i in range(n):
-            card = json.loads(run(t, "card.js", I=i))
-            m = {}
-            for _ in range(2):
-                run(t, "det.js", I=i)
-                m = json.loads(wait_for(lambda: run(t, "one.js"), lambda v: '"video":"http' in v, tries=5) or "{}")
-                run(t, "close.js"); time.sleep(1)
+            card = read_card(t, i, n)
+            if card is None:
+                log(f"page {page} card {i}: card never loaded, skipped"); continue
+            key = card_key(card)
+            if key in cache:  # the same ad again, from another ad account: no need to open it again
+                m = cache[key]
+            else:
+                m = read_detail(t, i)
                 if m.get("video"):
-                    break
+                    cache[key] = m; misses = 0
+                else:
+                    misses += 1
+                    if misses >= 3:  # SocialPeta is choking: rest three minutes, then carry on
+                        log(f"page {page} card {i}: 3 empty Detail windows in a row, resting 3 min")
+                        time.sleep(180); misses = 0
             rows.append({"p": page, "i": i, "card": card, "modal": m})
         sel = run(t, "sel.js")
         if "Country/Region: United States" not in sel:
             raise RuntimeError(f"filters dropped on page {page}")
-        log(f"page {page}: {n} cards")
+        log(f"page {page}: {n} cards, {sum(1 for r in rows if r['p'] == page and r['modal'].get('video'))} with video")
     return rows
 
 
