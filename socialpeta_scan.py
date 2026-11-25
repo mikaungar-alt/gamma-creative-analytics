@@ -21,7 +21,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 JS = os.path.join(ROOT, "socialpeta")
 WORK = os.path.expanduser("~/Library/Application Support/claude-work/socialpeta")
 LOG = os.path.expanduser("~/Library/Logs/sp-competitors.log")
-PAGES = int(os.environ.get("SP_PAGES", "3"))
+PAGES = int(os.environ.get("SP_PAGES", "6"))  # Mika 25.11 12:00 "תחפש יותר": 6 pages = 360 cards
 LIST_URL = "https://socialpeta.com/modules/drama/creative"
 CHART_URL = "https://socialpeta.com/modules/drama/charts"
 # Meta Ad Library (Mika 24.11 16:00: "תן לי את שניהם גם מטא וגם סושיאל פיטה"). Meta's API gives no US
@@ -247,6 +247,14 @@ def main():
         return
     vpath = os.path.join(WORK, "mika-ai-verdicts.json")
     verdicts = json.load(open(vpath)) if os.path.exists(vpath) else {"AI": [], "Real": []}
+    # Mika 25.11 11:55: Claude judges each new drama from video frames in the morning, Mika confirms only the
+    # unclear ones. Claude's calls sit in their own file; Mika's verdict wins where both exist.
+    cpath = os.path.join(WORK, "claude-ai-verdicts.json")
+    if os.path.exists(cpath):
+        cv = json.load(open(cpath))
+        mine = set(verdicts["AI"]) | set(verdicts["Real"])
+        verdicts = {"AI": verdicts["AI"] + [d for d in cv.get("AI", []) if d not in mine],
+                    "Real": verdicts["Real"] + [d for d in cv.get("Real", []) if d not in mine]}
     t = c = m = None
     try:
         t = open_tab(LIST_URL); time.sleep(12)
