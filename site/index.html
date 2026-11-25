@@ -72,6 +72,8 @@ tr.go{cursor:pointer}
 #aud table.hm th{text-align:center}#aud table.hm th.l{text-align:left}#aud table.hm tr[data-ae],#aud table.hm tr[data-as]{cursor:pointer}#aud table.hm tr[data-ae]:hover td.l,#aud table.hm tr[data-as]:hover td.l{color:var(--accent)}
 #aud td.hg{background:rgba(31,157,107,.16);color:#1f9d6b;font-weight:600}#aud td.hb{background:rgba(209,69,59,.14);color:#d1453b;font-weight:600}#aud td.hn{background:rgba(127,137,170,.10)}
 #aud td.thin{background:repeating-linear-gradient(45deg,rgba(127,137,170,.16),rgba(127,137,170,.16) 4px,transparent 4px,transparent 8px);color:var(--muted)}
+#comp .clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}#comp .clamp:hover{color:var(--accent)}
+#pop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:999;padding:16px}#pop.on{display:flex}#pop .box{background:var(--panel);color:var(--text);max-width:560px;width:100%;max-height:80vh;overflow:auto;border-radius:12px;padding:20px 22px;font-size:14px;line-height:1.55;white-space:normal;position:relative;box-shadow:0 10px 40px rgba(0,0,0,.3)}#pop .box .muted{margin-top:10px;font-size:13px}#pop .x{position:absolute;top:8px;right:12px;border:0;background:none;font-size:22px;cursor:pointer;color:inherit}
 #comp h3{margin:18px 14px 6px;font-size:14px}#comp .sub2{margin:0 14px 8px;color:var(--muted);font-size:12px}#comp .tablewrap{max-height:none}#comp .days{display:flex;gap:6px;flex-wrap:wrap;margin:14px}#comp td.txt{min-width:260px;max-width:420px;white-space:normal;font-size:12px}#comp td.txt .muted{margin-top:4px;font-size:11px}#comp .tablewrap{overflow-x:auto}#comp a.play{font-weight:600;white-space:nowrap}#comp .pill.new{background:#16a34a;color:#fff;margin-right:4px}
 #aud tr.avg td{color:var(--muted);font-style:italic;background:none}
 #aud details{margin:10px 14px 14px}#aud summary{cursor:pointer;color:var(--muted);font-weight:600;font-size:13px}#aud details h3{margin-left:0}#aud details .sub2{margin-left:0}
@@ -529,7 +531,7 @@ function compTable(list, showAi, streak){
   const body = list.map((a, i) => { const s = streak ? streak(a.video) : {n: 1, isNew: false}; return `<tr><td>${i + 1}</td>
     <td class="l">${s.isNew ? `<span class="pill new">New today</span> ` : ""}${thumbCell(a.thumb, a.advertiser || a.app, a.video ? `<a class="play" href="${esc(a.video)}" target="_blank" rel="noopener">▶ Watch the ad</a>` : '<span class="muted">No video link</span>')}</td>
     <td class="l">${esc(a.drama || "–")}<div class="muted">${esc(a.app || "")}${a.company ? " · " + esc(a.company) : ""}</div>${a.tier || a.status ? `<div>${a.tier ? `<span class="pill n">${esc(a.tier)}</span> ` : ""}${a.status ? `<span class="pill ${a.status === "Banned" ? "b" : "n"}">${esc(a.status)}</span>` : ""}</div>` : ""}${a.categories ? `<div class="muted">${esc(a.categories)}</div>` : ""}</td>
-    <td class="l txt">${esc(a.text || "")}${a.desc ? `<div class="muted">${esc(a.desc)}</div>` : ""}</td><td>${esc(a.len || "–")}</td><td>${esc(a.size || "–")}</td><td>${a.days != null ? fmtN(a.days) : "–"}${a.range ? `<div class="muted">${esc(a.range)}</div>` : ""}</td><td>${s.n}</td><td>${esc(a.first_seen || "–")}</td><td>${esc(a.last_seen || "–")}</td><td>${esc(a.impr || "–")}</td>
+    <td class="l txt"><div class="clamp" title="Click to read">${esc(a.text || "")}${a.desc ? `<div class="muted">${esc(a.desc)}</div>` : ""}</div></td><td>${esc(a.len || "–")}</td><td>${esc(a.size || "–")}</td><td>${a.days != null ? fmtN(a.days) : "–"}${a.range ? `<div class="muted">${esc(a.range)}</div>` : ""}</td><td>${s.n}</td><td>${esc(a.first_seen || "–")}</td><td>${esc(a.last_seen || "–")}</td><td>${esc(a.impr || "–")}</td>
     <td>${esc(a.score_week || "–")}</td><td>${esc(a.score_total || "–")}</td><td>${esc(a.versions || "–")}</td><td>${esc(a.network || "–")}</td><td>${a.regions != null ? fmtN(a.regions) : "–"}</td><td>${esc(a.language || "–")}</td><td>${esc(a.dest || "–")}</td><td>${esc(a.drama_creatives || "–")}</td><td>${esc(a.drama_ad_days || "–")}</td>
     ${showAi ? `<td>${aiPill(a.ai)}</td>` : ""}</tr>`; }).join("");
   return `<div class="tablewrap"><table><thead><tr>${head.map((h, i) => `<th class="${i === 1 || i === 2 || i === 3 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="${head.length}" class="muted">Nothing this day.</td></tr>`}</tbody></table></div>`;
@@ -540,7 +542,7 @@ function metaTable(list){
   const body = list.map((a, i) => `<tr><td>${i + 1}</td>
     <td class="l">${thumbCell(a.thumb, a.advertiser || a.app, `<a class="play" href="${esc(a.link)}" target="_blank" rel="noopener">▶ Watch in Meta Ad Library</a>`)}</td>
     <td class="l">${esc(a.app || "")}<div class="muted">${esc(a.advertiser || "")}</div></td>
-    <td class="l txt">${esc(a.text || "")}</td><td class="l txt">${esc(a.headline || "–")}${a.linkdesc ? `<div class="muted">${esc(a.linkdesc)}</div>` : ""}</td><td>${esc(a.cta || "–")}</td><td>${esc(a.domain || "–")}</td>
+    <td class="l txt"><div class="clamp" title="Click to read">${esc(a.text || "")}</div></td><td class="l txt">${esc(a.headline || "–")}${a.linkdesc ? `<div class="muted">${esc(a.linkdesc)}</div>` : ""}</td><td>${esc(a.cta || "–")}</td><td>${esc(a.domain || "–")}</td>
     <td>${fmtN(a.versions || 1)}</td><td>${a.pages != null ? fmtN(a.pages) : "–"}</td><td>${a.days != null ? fmtN(a.days) : "–"}</td><td>${esc(a.started || "–")}</td></tr>`).join("");
   return `<div class="tablewrap"><table><thead><tr>${head.map((h, i) => `<th class="${i >= 1 && i <= 4 ? "l" : ""}">${h}</th>`).join("")}</tr></thead><tbody>${body || `<tr><td colspan="${head.length}" class="muted">Nothing this day.</td></tr>`}</tbody></table></div>`;
 }
@@ -718,6 +720,13 @@ function exportXlsx(){
   const name = `Creative Analytics - ${state.editor === "All" ? "All editors" : state.editor}${state.series === "All" ? "" : " - " + state.series.replace(/[\\/:*?"<>|]/g, "")} - ${state.from} to ${state.to}.xlsx`;
   XLSX.writeFile(wb, name);
 }
+</script>
+<div id="pop"><div class="box"><button class="x" aria-label="Close">×</button><div class="in"></div></div></div>
+<script>
+document.addEventListener("click",function(e){var c=e.target.closest&&e.target.closest("#comp .clamp");var p=document.getElementById("pop");
+if(c){p.querySelector(".in").innerHTML=c.innerHTML;p.classList.add("on");return}
+if(p.classList.contains("on")&&(e.target===p||e.target.closest(".x")))p.classList.remove("on")});
+document.addEventListener("keydown",function(e){if(e.key==="Escape")document.getElementById("pop").classList.remove("on")});
 </script>
 </body>
 </html>
