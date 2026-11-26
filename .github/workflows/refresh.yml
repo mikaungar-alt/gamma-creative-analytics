@@ -25,7 +25,25 @@ concurrency:
   group: pages
   cancel-in-progress: false
 jobs:
+  # Mika 26.11: GitHub's own schedule fires hours late (18:20, 19:39 on 25.11) and pulled everything again.
+  # Kfir starts the morning run, so a scheduled run only goes ahead if nothing succeeded or is running today.
+  guard:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "go=true" >> $GITHUB_OUTPUT; exit 0; fi
+          TODAY=$(date -u +%Y-%m-%d)
+          N=$(gh run list -R ${{ github.repository }} -w "Refresh data" -L 20 --json createdAt,event,status,conclusion,databaseId \
+            -q "[.[] | select(.databaseId != ${{ github.run_id }}) | select(.createdAt|startswith(\"$TODAY\")) | select(.event!=\"push\") | select(.status!=\"completed\" or .conclusion==\"success\")] | length")
+          if [ "$N" -gt 0 ]; then echo "go=false" >> $GITHUB_OUTPUT; echo "already ran today, skip"; else echo "go=true" >> $GITHUB_OUTPUT; fi
   build:
+    needs: guard
+    if: needs.guard.outputs.go == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     environment:
@@ -42,7 +60,10 @@ jobs:
         id: reuse
         if: github.event_name == 'push'
         continue-on-error: true
-        run: curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc" && python -c "import json;d=json.load(open('site/data.enc'));assert d['ct']"
+        run: |
+          curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc" && python -c "import json;d=json.load(open('site/data.enc'));assert d['ct']"
+          # the activity-log memory is published next to the data; keep it, or the next morning reads every day again
+          curl -fsS -o site/blocked_log.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/blocked_log.enc" || rm -f site/blocked_log.enc
       - name: Get the live data to merge into
         if: inputs.merge == '1'
         run: curl -fsS -o site/data.enc "https://mikaungar-alt.github.io/gamma-creative-analytics/data.enc"
@@ -50,8 +71,10 @@ jobs:
       - name: Get the Drive map
         continue-on-error: true
         run: git fetch --depth 1 origin drive-map && git show FETCH_HEAD:drive.enc > drive.enc
+      # Mika 26.11: stopped at 100 minutes as a failure (not "cancelled" at 120), so the new attempt and the mail both go out
       - name: Pull Meta data and encrypt
         if: github.event_name != 'push' || steps.reuse.outcome != 'success'
+        timeout-minutes: 100
         env:
           META_TOKEN: ${{ secrets.META_TOKEN }}
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
@@ -59,12 +82,12 @@ jobs:
           DAYS: ${{ inputs.days || '90' }}
           MERGE: ${{ inputs.merge || '0' }}
         run: python -u fetch.py
-      # A push reuses the live numbers: only redo the Drive links (a minute, not a Meta pull)
+      # A push reuses the live numbers: only redo the Drive links (a minute, never a Meta call)
       - name: Redo the Drive links
         if: github.event_name == 'push' && steps.reuse.outcome == 'success'
         continue-on-error: true
+        timeout-minutes: 10
         env:
-          META_TOKEN: ${{ secrets.META_TOKEN }}
           DASH_PASSWORD: ${{ secrets.DASH_PASSWORD }}
           DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
         run: python -u fetch.py --relink

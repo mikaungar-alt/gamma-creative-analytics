@@ -61,9 +61,10 @@ def get_raw(full_url, tries=6):
         try:
             with urllib.request.urlopen(full_url, timeout=120) as r:
                 return json.load(r)
-        except Exception:
+        except Exception as e:
             if i == tries - 1:
                 raise
+            print(f"  page retry {i + 1}/{tries - 1} after: {str(e)[:150]}", file=sys.stderr, flush=True)
             time.sleep(15 * (i + 1))
 
 
@@ -71,23 +72,42 @@ class ReportFailed(RuntimeError):
     pass
 
 
+class OutOfTime(RuntimeError):
+    pass
+
+
+JOB_CAP = 10 * 60  # Mika 26.11: a Meta report that isn't ready in 10 minutes is asked for again
+
+
+def wait_job(rid, label):
+    """Wait for a Meta async report, writing its state to the log every minute.
+    Meta sometimes fails or stalls a report (26.11: two refreshes sat silent for an hour)."""
+    t0, last_print = time.time(), 0
+    while True:
+        st = get(f"{API}/{rid}", {"fields": "async_status,async_percent_completion"})
+        s, pct = st["async_status"], st.get("async_percent_completion")
+        if s == "Job Completed":
+            return
+        if s in ("Job Failed", "Job Skipped"):
+            raise ReportFailed(f"{label}: report {rid} {s}")
+        if time.time() - t0 > JOB_CAP:
+            raise ReportFailed(f"{label}: report {rid} still '{s}' {pct}% after {JOB_CAP // 60} min, asking again")
+        if time.time() - last_print >= 60:
+            print(f"  {label}: {s} {pct}% ({int(time.time() - t0)}s)", file=sys.stderr, flush=True)
+            last_print = time.time()
+        time.sleep(5)
+
+
 def report_rows(account_id, since, until):
-    """One async report job — large ranges time out as plain GET."""
+    """One async report job — large ranges time out as plain GET.
+    No impressions filter: Meta books some purchases on days the ad had no impressions (Mika 26.11, ~2% of purchases)."""
     job = get(f"{API}/{account_id}/insights", {
         "level": "ad", "time_increment": 1, "fields": FIELDS,
         "time_range": json.dumps({"since": since, "until": until}),
-        "filtering": json.dumps([{"field": "impressions", "operator": "GREATER_THAN", "value": 0}]),
         "action_attribution_windows": json.dumps(["7d_click", "1d_view"]),
     }, method="POST")
     rid = job["report_run_id"]
-    while True:
-        st = get(f"{API}/{rid}", {"fields": "async_status,async_percent_completion"})
-        if st["async_status"] == "Job Completed":
-            break
-        if st["async_status"] in ("Job Failed", "Job Skipped"):
-            raise ReportFailed(f"report {rid} {st['async_status']} for {account_id} {since}..{until}")
-        print(f"  {account_id} job {st.get('async_percent_completion')}%", file=sys.stderr, flush=True)
-        time.sleep(5)
+    wait_job(rid, f"{account_id} {since}..{until}")
     print(f"  {account_id} {since}..{until} job done, paging", file=sys.stderr, flush=True)
     return list(paged(f"{API}/{rid}/insights", {"limit": 500}))
 
@@ -113,14 +133,17 @@ AUD_FIELDS = "ad_id,ad_name,campaign_name,spend,impressions,inline_link_clicks,a
 AUD_WEEKS = 5  # whole weeks ending on the last data day; 13 weeks ran past an hour on 9.11, so 5 (covers "last 30 days")
 
 
-def audience(accounts, until, weeks=AUD_WEEKS):
+def audience(accounts, until, weeks=AUD_WEEKS, deadline=None):
     """Age x gender per ad from Meta, summed per week x (editor, series, account) x segment.
     Ad level is needed for the editor and series; summing keeps the file small (Mika 9.11).
-    Editors here come from the morning pull, so an editor-rule change shows on the next morning."""
+    Editors here come from the morning pull, so an editor-rule change shows on the next morning.
+    Past the deadline it gives up, and the caller keeps yesterday's tab (Mika 26.11)."""
     since = until - dt.timedelta(days=weeks * 7 - 1)
     groups, gi, segs, si, cells = [], {}, [], {}, {}
     for acc in accounts:
         for w in range(weeks):
+            if deadline and time.time() > deadline:
+                raise OutOfTime(f"audience: out of time at {acc['name']} week {w + 1}/{weeks}")
             ws = since + dt.timedelta(days=7 * w)
             we = ws + dt.timedelta(days=6)
             rows = audience_rows(acc["id"], ws.isoformat(), we.isoformat())
@@ -153,17 +176,10 @@ def audience_rows(account_id, since, until):
             job = get(f"{API}/{account_id}/insights", {
                 "level": "ad", "fields": AUD_FIELDS, "breakdowns": "age,gender",
                 "time_range": json.dumps({"since": since, "until": until}),
-                "filtering": json.dumps([{"field": "impressions", "operator": "GREATER_THAN", "value": 0}]),
                 "action_attribution_windows": json.dumps(["7d_click", "1d_view"]),
             }, method="POST")
             rid = job["report_run_id"]
-            while True:
-                st = get(f"{API}/{rid}", {"fields": "async_status,async_percent_completion"})
-                if st["async_status"] == "Job Completed":
-                    break
-                if st["async_status"] in ("Job Failed", "Job Skipped"):
-                    raise ReportFailed(f"audience {rid} {st['async_status']}")
-                time.sleep(5)
+            wait_job(rid, f"audience {account_id} {since}")
             return list(paged(f"{API}/{rid}/insights", {"limit": 2000}))
         except ReportFailed as e:
             print(f"  {e} {account_id} {since}; retry {attempt + 1}/3", file=sys.stderr, flush=True)
@@ -350,46 +366,78 @@ def was_active(x):
     return rs.get("old_value") == 1 or str(x.get("old_value", "")).lower() == "active"
 
 
-def log_events(account_id, since_ts):
-    out, url = [], f"{API}/{account_id}/activities"
-    params = {"fields": "event_type,object_id,object_name,extra_data,event_time", "limit": 200, "since": since_ts}
-    for e in paged(url, params):
+def log_day(account_id, day):
+    """One UTC day of the activity log. Gamma IL writes ~1,800 events a day; reading 20+ days in
+    one paging chain failed with a Meta 500 in 19 of 21 runs (checked 26.11), one day takes ~20s."""
+    start = int(dt.datetime.combine(day, dt.time(), dt.timezone.utc).timestamp())
+    params = {"fields": "event_type,object_id,object_name,extra_data,event_time", "limit": 200,
+              "since": start, "until": start + 86400}
+    out = []
+    for e in paged(f"{API}/{account_id}/activities", params):
         if e.get("event_type") in ("update_ad_run_status", "update_ad_creative"):
             try:
-                e["x"] = json.loads(e.get("extra_data") or "{}")
+                x = json.loads(e.get("extra_data") or "{}")
             except ValueError:
-                e["x"] = {}
-            out.append(e)
+                x = {}
+            out.append({"event_type": e["event_type"], "object_id": e.get("object_id"),
+                        "object_name": e.get("object_name", ""), "event_time": e["event_time"], "x": x})
+    return out
+
+
+def log_events(account_id, since_day, cache, deadline=None):
+    """Activity log since since_day, one day at a time. Whole UTC days already read on an earlier
+    run come from `cache` ({day: events}) and are not asked again; today is always re-read."""
+    out, today = [], dt.datetime.now(dt.timezone.utc).date()
+    d = since_day
+    while d <= today:
+        k = d.isoformat()
+        if d < today and k in cache:
+            out += cache[k]
+        else:
+            if deadline and time.time() > deadline:
+                raise OutOfTime(f"activity log {account_id}: out of time at {k}")
+            ev = log_day(account_id, d)
+            if d < today:
+                cache[k] = ev
+            out += ev
+        d += dt.timedelta(days=1)
     return out
 
 
 def objects(ids, fields):
+    """Batched lookups. One object we may not read fails its whole batch, so a failed batch is split
+    in half until the bad one is alone (one-by-one fallback hit Meta's request limit on 26.11)."""
     out, ids = {}, [i for i in dict.fromkeys(ids) if i]
-    for i in range(0, len(ids), 50):
-        chunk = ids[i:i + 50]
+
+    def fetch_ids(chunk):
         try:
             out.update(get(f"{API}/", {"ids": ",".join(chunk), "fields": fields}, tries=2))
-        except Exception as e:  # one object we may not read fails the whole chunk: fall back to one by one
-            print("objects chunk failed, going one by one:", str(e)[:120], file=sys.stderr)
-            for one in chunk:
-                try:
-                    out[one] = get(f"{API}/{one}", {"fields": fields}, tries=1)
-                except Exception:
-                    pass
+        except Exception as e:
+            if len(chunk) == 1:
+                return
+            if len(chunk) == 50:
+                print("objects batch failed, splitting:", str(e)[:120], file=sys.stderr, flush=True)
+            half = len(chunk) // 2
+            fetch_ids(chunk[:half])
+            fetch_ids(chunk[half:])
+    for i in range(0, len(ids), 50):
+        fetch_ids(ids[i:i + 50])
     return out
 
 
-def blocked_ads(spent_ids):
-    """One row per (ad, original creative) rejected since config blocked_since."""
+def blocked_ads(spent_ids, log_cache=None, deadline=None):
+    """One row per (ad, original creative) rejected since config blocked_since.
+    log_cache ({account id: {day: events}}) is filled in place, so the next run reads only new days.
+    If an account's log can't be read, the whole stage fails and the caller keeps yesterday's tab:
+    a tab missing Gamma IL looked complete and showed ~30 blocked ads instead of ~630 (26.11)."""
     since = CONFIG.get("blocked_since", "2026-11-09")
-    since_ts = int(dt.datetime.fromisoformat(since).replace(tzinfo=dt.timezone.utc).timestamp())
+    since_day = dt.date.fromisoformat(since)
+    log_cache = {} if log_cache is None else log_cache
     found = []
     for acc in CONFIG["accounts"]:
-        try:
-            ev = log_events(acc["id"], since_ts)
-        except Exception as e:
-            print(f"blocked: log failed for {acc['name']}: {e}", file=sys.stderr)
-            continue
+        t0 = time.time()
+        ev = log_events(acc["id"], since_day, log_cache.setdefault(acc["id"], {}), deadline)
+        print(f"blocked: {acc['name']} log, {len(ev)} events ({int(time.time() - t0)}s)", file=sys.stderr, flush=True)
         ev.sort(key=lambda e: e["event_time"])
         swaps = {}
         for e in ev:
@@ -551,22 +599,72 @@ def main():
                      "p100", "thru", "watch_sum", "plays"],
         "editors": [e["name"] for e in CONFIG["editors"]] + [CONFIG["default_editor"]],
         "ads": ad_list, "rows": rows,
-        "blocked_cols": BLOCKED_COLS, "blocked": blocked_ads({a[7] for a in ad_list}),
-        "blocked_since": CONFIG.get("blocked_since", "2026-11-09"),
+        "blocked_cols": BLOCKED_COLS, "blocked_since": CONFIG.get("blocked_since", "2026-11-09"),
     }
-    try:  # the Audience tab is extra: if Meta fails on it, the rest of the page still updates
-        payload.update(old_aud or audience(accounts, until))  # a merge keeps yesterday's audience tab
+    # Mika 26.11: the numbers, Blocked and Audience stand apart. Each extra stage has its own time limit;
+    # if it fails or runs out of time, the page keeps that tab from the last good run and the numbers still go up.
+    live = live_payload()
+    print(f"numbers done in {int(time.time() - START) // 60} min", file=sys.stderr, flush=True)
+    log_cache = open_enc(os.path.join(ROOT, "site", "blocked_log.enc"), url=f"{SITE}/blocked_log.enc") or {}
+    try:
+        payload["blocked"] = blocked_ads({a[7] for a in ad_list}, log_cache, stage_deadline(25))
     except Exception as e:
-        print(f"audience skipped: {e}", file=sys.stderr)
-    raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
+        print(f"blocked: kept from the last good run ({e})", file=sys.stderr, flush=True)
+        payload["blocked"] = live.get("blocked", [])
+    if log_cache:  # days read so far are kept even when the stage failed, so the next run starts further on
+        write_enc(os.path.join(ROOT, "site", "blocked_log.enc"), log_cache)
+    if old_aud:  # a merge keeps yesterday's audience tab
+        payload.update(old_aud)
+    else:
+        try:
+            payload.update(audience(accounts, until, deadline=stage_deadline(35)))
+        except Exception as e:
+            print(f"audience: kept from the last good run ({e})", file=sys.stderr, flush=True)
+            payload.update({k: v for k, v in live.items() if k.startswith("aud")})
+    gz = write_enc(os.path.join(ROOT, "site", "data.enc"), payload)
+    print(f"ads={len(ad_list)} rows={len(rows)} gz={gz // 1024}KB, all done in {int(time.time() - START) // 60} min",
+          file=sys.stderr)
+
+
+START = time.time()
+SITE = "https://mikaungar-alt.github.io/gamma-creative-analytics"
+RUN_BUDGET = 95 * 60  # the GitHub step is stopped at 100 minutes; finish and save before that
+
+
+def stage_deadline(minutes):
+    """A stage gets `minutes`, but never past the run budget."""
+    return min(time.time() + minutes * 60, START + RUN_BUDGET)
+
+
+def write_enc(path, obj):
+    raw = gzip.compress(json.dumps(obj, separators=(",", ":")).encode(), 9)
     salt, iv = os.urandom(16), os.urandom(12)
     key = PBKDF2HMAC(hashes.SHA256(), 32, salt, 250000).derive(PASSWORD.encode())
     ct = AESGCM(key).encrypt(iv, raw, None)
-    out = os.path.join(ROOT, "site", "data.enc")
-    with open(out, "w") as f:
+    with open(path, "w") as f:
         json.dump({"v": 1, "iter": 250000, "salt": base64.b64encode(salt).decode(),
                    "iv": base64.b64encode(iv).decode(), "ct": base64.b64encode(ct).decode()}, f)
-    print(f"ads={len(ad_list)} rows={len(rows)} gz={len(raw)//1024}KB", file=sys.stderr)
+    return len(raw)
+
+
+def open_enc(path, url=None):
+    """Decrypt a local file, or the published copy at `url`. None if neither can be read."""
+    try:
+        if url and not os.path.exists(path):
+            with urllib.request.urlopen(url, timeout=60) as r:
+                d = json.load(r)
+        else:
+            d = json.load(open(path))
+        key = PBKDF2HMAC(hashes.SHA256(), 32, base64.b64decode(d["salt"]), d["iter"]).derive(PASSWORD.encode())
+        return json.loads(gzip.decompress(AESGCM(key).decrypt(base64.b64decode(d["iv"]), base64.b64decode(d["ct"]), None)))
+    except Exception as e:
+        print(f"could not open {url or path}: {str(e)[:120]}", file=sys.stderr, flush=True)
+        return None
+
+
+def live_payload():
+    """What the site shows now, to fall back on per tab."""
+    return open_enc(os.path.join(ROOT, "site", "live.enc"), url=f"{SITE}/data.enc") or {}
 
 
 def open_live():
@@ -598,15 +696,8 @@ def relink():
             links[a[ci]] = match(a[ci])
         a[di] = links[a[ci]]
     print(f"drive links: {sum(1 for v in links.values() if v)} of {len(links)} creatives", file=sys.stderr)
-    if TOKEN:  # blocked ads come from today's activity log: cheap, so every push refreshes them
-        payload["blocked_cols"] = BLOCKED_COLS
-        payload["blocked_since"] = CONFIG.get("blocked_since", "2026-11-09")
-        payload["blocked"] = blocked_ads({a[cols.index("id")] for a in payload["ads"]})
-        if "aud" not in payload:  # no age/gender yet: the last two weeks, a few minutes (the morning pull brings the full set)
-            try:
-                payload.update(audience(CONFIG["accounts"], dt.date.fromisoformat(payload["until"]), 2))
-            except Exception as e:
-                print(f"audience skipped: {e}", file=sys.stderr)
+    # Mika 26.11: a push never asks Meta for anything. Blocked and Audience come with the morning run;
+    # asking for them here made a one-line fix take 22 minutes to go live.
     raw = gzip.compress(json.dumps(payload, separators=(",", ":")).encode(), 9)
     iv = os.urandom(12)
     ct = AESGCM(key).encrypt(iv, raw, None)
