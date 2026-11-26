@@ -312,7 +312,8 @@ function add(t, r, wk){
 }
 function finish(t){
   t.roas = div(t.value, t.spend); t.cpa = div(t.spend, t.purch); t.cpm = div(t.spend * 1000, t.impr);
-  t.ctr = div(t.clicks * 100, t.impr); t.hook = t.impr3 ? div(t.v3 * 100, t.impr3) : null; // 3-second views ÷ impressions; days fetched before 24.11 have no 3-second count and are left out t.w25 = div(t.p25 * 100, t.impr); t.keep = div(t.p50 * 100, t.p25);
+  t.ctr = div(t.clicks * 100, t.impr); t.hook = t.impr3 ? div(t.v3 * 100, t.impr3) : null; // 3-second views ÷ impressions; days fetched before 24.11 have no 3-second count and are left out
+  t.w25 = div(t.p25 * 100, t.impr); t.keep = div(t.p50 * 100, t.p25);
   t.w75 = div(t.p75 * 100, t.impr); t.w100 = div(t.p100 * 100, t.impr); t.thrup = div(t.thru * 100, t.impr);
   t.avg = div(t.watch, t.plays); t.cpc = div(t.spend, t.clicks); t.c2p = div(t.purch * 100, t.clicks);
   t.wroas = t.weeks.map(w => w.spend ? w.value / w.spend : null).reverse(); // oldest → newest
