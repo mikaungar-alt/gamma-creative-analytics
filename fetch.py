@@ -607,6 +607,8 @@ def main():
     print(f"numbers done in {int(time.time() - START) // 60} min", file=sys.stderr, flush=True)
     log_cache = open_enc(os.path.join(ROOT, "site", "blocked_log.enc"), url=f"{SITE}/blocked_log.enc") or {}
     try:
+        if os.environ.get("BLOCKED", "0") != "1":  # Mika 27.11: Blocked is off for now; it stalled every run since 26.11
+            raise RuntimeError("Blocked is switched off")
         payload["blocked"] = blocked_ads({a[7] for a in ad_list}, log_cache, stage_deadline(25))
     except Exception as e:
         print(f"blocked: kept from the last good run ({e})", file=sys.stderr, flush=True)
@@ -615,6 +617,9 @@ def main():
         write_enc(os.path.join(ROOT, "site", "blocked_log.enc"), log_cache)
     if old_aud:  # a merge keeps yesterday's audience tab
         payload.update(old_aud)
+    elif os.environ.get("AUDIENCE", "1") != "1":  # Mika 27.11: creatives first, audience in a second run
+        print("audience: skipped this run, kept from the last good run", file=sys.stderr, flush=True)
+        payload.update({k: v for k, v in live.items() if k.startswith("aud")})
     else:
         try:
             payload.update(audience(accounts, until, deadline=stage_deadline(35)))

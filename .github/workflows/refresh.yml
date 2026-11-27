@@ -11,6 +11,9 @@ on:
       merge:
         description: "1 = keep the live data and replace only the pulled days"
         default: "0"
+      audience:
+        description: "0 = skip the audience tab this run and keep the last one"
+        default: "1"
       retry:
         description: "How many times this run was already retried (set by the run itself)"
         default: "0"
@@ -81,6 +84,7 @@ jobs:
           DRIVE_KEY: ${{ secrets.DRIVE_KEY }}
           DAYS: ${{ inputs.days || '90' }}
           MERGE: ${{ inputs.merge || '0' }}
+          AUDIENCE: ${{ inputs.audience || '1' }}
         run: python -u fetch.py
       # A push reuses the live numbers: only redo the Drive links (a minute, never a Meta call)
       - name: Redo the Drive links
@@ -111,5 +115,5 @@ jobs:
         run: |
           R=$(( ${{ inputs.retry || '0' }} + 1 ))
           if [ $R -le 2 ]; then
-            gh workflow run "Refresh data" -R ${{ github.repository }} -f days=${{ inputs.days || '90' }} -f merge=${{ inputs.merge || '0' }} -f retry=$R
+            gh workflow run "Refresh data" -R ${{ github.repository }} -f days=${{ inputs.days || '90' }} -f merge=${{ inputs.merge || '0' }} -f audience=${{ inputs.audience || '1' }} -f retry=$R
           fi
